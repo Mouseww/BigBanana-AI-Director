@@ -156,7 +156,6 @@ const StageDirector: React.FC<Props> = ({ project, updateProject }) => {
     let videoPrompt = shot.actionSummary;
     if (selectedModel === 'sora-2') {
       // 当有结束帧时，明确指示要实现帧间过渡
-      if (endImageUrl) {
         videoPrompt = `Generate a smooth transition video from the first image (start frame) to the second image (end frame).
 
 Action Description: ${shot.actionSummary}
@@ -168,16 +167,7 @@ Technical Requirements:
 - Transition: Ensure natural and fluid motion between start and end frames, avoid jumps or discontinuities
 - Visual Style: Cinematic quality with consistent lighting and color tone throughout
 - Details: Maintain character and scene continuity and consistency between both frames`;
-      } else {
-        videoPrompt = `${shot.actionSummary}
-
-Technical Requirements:
-- Aspect Ratio: 16:9 widescreen landscape format
-- Camera Movement: ${shot.cameraMovement}
-- Visual Style: Cinematic quality with natural and fluid motion
-- Details: Maintain character and scene consistency, avoid abrupt deformations
-- Lighting: Stable lighting conditions with natural contrast`;
-      }
+    
     }
     
     const intervalId = shot.interval?.id || `int-${shot.id}-${Date.now()}`;
