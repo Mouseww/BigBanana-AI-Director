@@ -26,6 +26,9 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # 从构建阶段复制构建产物到 nginx 目录
 COPY --from=builder /app/dist /usr/share/nginx/html
 
+# 复制 favicon.ico 到 nginx 目录
+COPY --from=builder /app/favicon.ico /usr/share/nginx/html/
+
 # 暴露 80 端口
 EXPOSE 80
 
