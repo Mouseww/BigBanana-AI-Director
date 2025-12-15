@@ -12,6 +12,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
   const [batchProgress, setBatchProgress] = useState<{current: number, total: number} | null>(null);
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Variation Form State
   const [newVarName, setNewVarName] = useState("");
@@ -243,6 +244,32 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
   return (
     <div className="flex flex-col h-full bg-[#121212] relative overflow-hidden">
       
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div 
+          className="absolute inset-0 z-50 bg-black/95 flex items-center justify-center backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setPreviewImage(null)}
+        >
+          <button 
+            onClick={() => setPreviewImage(null)}
+            className="absolute top-6 right-6 p-3 hover:bg-white/10 rounded-full transition-colors group z-10"
+          >
+            <X className="w-6 h-6 text-white group-hover:rotate-90 transition-transform" />
+          </button>
+          <div className="max-w-6xl max-h-[90vh] w-full px-8">
+            <img 
+              src={previewImage} 
+              alt="Preview" 
+              className="w-full h-full object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+          <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-black/60 backdrop-blur rounded-lg border border-white/10">
+            <p className="text-xs text-zinc-300 font-mono">点击任意处关闭</p>
+          </div>
+        </div>
+      )}
+
       {/* Global Progress Overlay */}
       {batchProgress && (
         <div className="absolute inset-0 z-50 bg-black/80 flex flex-col items-center justify-center backdrop-blur-md animate-in fade-in">
@@ -284,7 +311,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
                                   <User className="w-4 h-4" /> Base Appearance
                               </h4>
                               <div className="bg-[#0A0A0A] p-4 rounded-xl border border-zinc-800">
-                                  <div className="aspect-[3/4] bg-zinc-900 rounded-lg overflow-hidden mb-4 relative">
+                                  <div className="aspect-video bg-zinc-900 rounded-lg overflow-hidden mb-4 relative cursor-pointer" onClick={() => selectedChar.referenceImage && setPreviewImage(selectedChar.referenceImage)}>
                                       {selectedChar.referenceImage ? (
                                           <img src={selectedChar.referenceImage} className="w-full h-full object-cover" />
                                       ) : (
@@ -424,14 +451,14 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
               <div key={char.id} className="bg-[#141414] border border-zinc-800 rounded-xl overflow-hidden flex flex-col group hover:border-zinc-600 transition-all hover:shadow-lg">
                 <div className="flex gap-4 p-4">
                   {/* Character Image */}
-                  <div className="w-32 flex-shrink-0">
-                    <div className="aspect-[3/4] bg-zinc-900 relative rounded-lg overflow-hidden">
+                  <div className="w-48 flex-shrink-0">
+                    <div className="aspect-video bg-zinc-900 relative rounded-lg overflow-hidden cursor-pointer" onClick={() => char.referenceImage && setPreviewImage(char.referenceImage)}>
                       {char.referenceImage ? (
                         <>
                           <img src={char.referenceImage} alt={char.name} className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-sm">
                             <button 
-                              onClick={() => handleGenerateAsset('character', char.id)}
+                              onClick={(e) => { e.stopPropagation(); handleGenerateAsset('character', char.id); }}
                               disabled={generatingIds.has(char.id)}
                               className="px-2 py-1.5 bg-black/50 text-white text-[9px] font-bold uppercase tracking-wider rounded border border-white/20 hover:bg-white hover:text-black transition-colors backdrop-blur flex items-center gap-1"
                             >
