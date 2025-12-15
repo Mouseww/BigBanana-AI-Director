@@ -260,8 +260,21 @@ Technical Requirements:
           
           try {
              const existingKf = shot.keyframes?.find(k => k.type === 'start');
-             const prompt = existingKf?.visualPrompt || shot.actionSummary;
+             let prompt = existingKf?.visualPrompt || shot.actionSummary;
              const kfId = existingKf?.id || `kf-${shot.id}-start-${Date.now()}`;
+
+             // 添加视觉风格
+             const visualStyle = project.visualStyle || project.scriptData?.visualStyle || 'live-action';
+             const stylePrompts: { [key: string]: string } = {
+               'live-action': 'photorealistic, cinematic film quality, real human actors, professional cinematography, natural lighting, 8K resolution',
+               'anime': 'Japanese anime style, cel-shaded, vibrant colors, expressive eyes, dynamic poses, Studio Ghibli/Makoto Shinkai quality',
+               '2d-animation': 'classic 2D animation, hand-drawn style, Disney/Pixar quality, smooth lines, expressive characters, painterly backgrounds',
+               '3d-animation': 'high-quality 3D CGI animation, Pixar/DreamWorks style, subsurface scattering, detailed textures, stylized characters',
+               'cyberpunk': 'cyberpunk aesthetic, neon-lit, rain-soaked streets, holographic displays, high-tech low-life, Blade Runner style',
+               'oil-painting': 'oil painting style, visible brushstrokes, rich textures, classical art composition, museum quality fine art',
+             };
+             const stylePrompt = stylePrompts[visualStyle] || visualStyle;
+             prompt = `${prompt}\n\nVisual Style: ${stylePrompt}\n\nVisual Requirements: High definition, cinematic composition, 16:9 widescreen format.`;
 
              const referenceImages = getRefImagesForShot(shot);
              const url = await generateImage(prompt, referenceImages);

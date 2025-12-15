@@ -34,7 +34,8 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
         const char = project.scriptData?.characters.find(c => String(c.id) === String(id));
         if (char) {
           // Use existing prompt or generate new one
-          prompt = char.visualPrompt || await generateVisualPrompts('character', char, project.scriptData?.genre || 'Cinematic');
+          const visualStyle = project.visualStyle || project.scriptData?.visualStyle || 'live-action';
+          prompt = char.visualPrompt || await generateVisualPrompts('character', char, project.scriptData?.genre || 'Cinematic', 'gpt-5.1', visualStyle);
           
           // Save the prompt if it was generated
           if (!char.visualPrompt && prompt && project.scriptData) {
@@ -47,7 +48,8 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
       } else {
         const scene = project.scriptData?.scenes.find(s => String(s.id) === String(id));
         if (scene) {
-          prompt = scene.visualPrompt || await generateVisualPrompts('scene', scene, project.scriptData?.genre || 'Cinematic');
+          const visualStyle = project.visualStyle || project.scriptData?.visualStyle || 'live-action';
+          prompt = scene.visualPrompt || await generateVisualPrompts('scene', scene, project.scriptData?.genre || 'Cinematic', 'gpt-5.1', visualStyle);
           
           // Save the prompt if it was generated
           if (!scene.visualPrompt && prompt && project.scriptData) {
