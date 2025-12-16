@@ -131,10 +131,11 @@ export async function downloadMasterVideo(
 
 /**
  * 估算合并后的视频总时长（秒）
+ * 每个镜头默认10秒
  */
 export function estimateTotalDuration(project: ProjectState): number {
   return project.shots.reduce((acc, shot) => {
-    return acc + (shot.interval?.duration || 3);
+    return acc + (shot.interval?.duration || 10);
   }, 0);
 }
 

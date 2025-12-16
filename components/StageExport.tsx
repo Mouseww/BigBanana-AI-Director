@@ -12,8 +12,8 @@ const StageExport: React.FC<Props> = ({ project, onApiKeyError }) => {
   const totalShots = project.shots.length;
   const progress = totalShots > 0 ? Math.round((completedShots.length / totalShots) * 100) : 0;
   
-  // Calculate total duration roughly
-  const estimatedDuration = project.shots.reduce((acc, s) => acc + (s.interval?.duration || 3), 0);
+  // Calculate total duration roughly (each shot = 10 seconds)
+  const estimatedDuration = project.shots.reduce((acc, s) => acc + (s.interval?.duration || 10), 0);
 
   // Download state
   const [isDownloading, setIsDownloading] = useState(false);

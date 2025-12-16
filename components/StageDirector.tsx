@@ -159,7 +159,7 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
           id: intervalId,
           startKeyframeId: sKf.id,
           endKeyframeId: eKf?.id || '',
-          duration: 3,
+          duration: 10,
           motionStrength: 5,
           status: 'pending'
         }
@@ -210,7 +210,7 @@ Technical Requirements:
           id: intervalId,
           startKeyframeId: sKf.id,
           endKeyframeId: eKf?.id || '',
-          duration: 3,
+          duration: 10,
           motionStrength: 5,
           videoUrl,
           status: 'completed'
