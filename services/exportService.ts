@@ -1,5 +1,5 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { fetchFile } from '@ffmpeg/util';
 import { ProjectState } from '../types';
 
 let ffmpegInstance: FFmpeg | null = null;
@@ -24,19 +24,34 @@ async function loadFFmpeg(onProgress?: (progress: number) => void): Promise<FFmp
     }
   });
 
-  // 加载 FFmpeg Core（从本地文件）
-  const baseURL = '/ffmpeg';
-  
+  // 加载 FFmpeg Core（从国内 CDN）
   try {
-    console.log('[FFmpeg] 正在从本地加载 FFmpeg Core...');
+    console.log('[FFmpeg] 正在从 CDN 加载 FFmpeg Core...');
+    
+    // 使用国内 BootCDN（速度快且稳定）
+    const baseURL = 'https://cdn.bootcdn.net/ajax/libs/ffmpeg-core/0.12.10/umd';
+    
     await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+      coreURL: `${baseURL}/ffmpeg-core.js`,
+      wasmURL: `${baseURL}/ffmpeg-core.wasm`,
     });
+    
     console.log('[FFmpeg] FFmpeg Core 加载成功');
   } catch (error) {
-    console.error('[FFmpeg] 加载失败:', error);
-    throw new Error(`无法加载 FFmpeg Core: ${error instanceof Error ? error.message : '未知错误'}`);
+    console.error('[FFmpeg] 从 BootCDN 加载失败，尝试备用 CDN...', error);
+    
+    // 备用方案：使用 Staticfile CDN
+    try {
+      const backupURL = 'https://cdn.staticfile.org/ffmpeg.wasm-core/0.12.6';
+      await ffmpeg.load({
+        coreURL: `${backupURL}/ffmpeg-core.js`,
+        wasmURL: `${backupURL}/ffmpeg-core.wasm`,
+      });
+      console.log('[FFmpeg] 从备用 CDN 加载成功');
+    } catch (backupError) {
+      console.error('[FFmpeg] 所有 CDN 加载失败:', backupError);
+      throw new Error(`无法加载 FFmpeg Core: ${backupError instanceof Error ? backupError.message : '未知错误'}`);
+    }
   }
 
   ffmpegInstance = ffmpeg;
