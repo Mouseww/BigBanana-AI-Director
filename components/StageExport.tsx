@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Film, Download, Share2, FileVideo, Layers, Clock, CheckCircle, BarChart3, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Film, Download, Share2, FileVideo, Layers, Clock, CheckCircle, BarChart3, Loader2, ChevronDown, ChevronUp, Play, Pause, SkipForward, SkipBack, X, Maximize2 } from 'lucide-react';
 import { ProjectState } from '../types';
 import { downloadMasterVideo, downloadSourceAssets } from '../services/exportService';
 
@@ -28,6 +28,71 @@ const StageExport: React.FC<Props> = ({ project, onApiKeyError }) => {
   // Render Logs Modal state
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+
+  // Video Preview Player state
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const [currentShotIndex, setCurrentShotIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Auto-play when shot changes
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video && showVideoPlayer) {
+      // Reset video state
+      video.currentTime = 0;
+      // Auto-play the video
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => setIsPlaying(true))
+          .catch(err => {
+            console.warn('Auto-play failed:', err);
+            setIsPlaying(false);
+          });
+      }
+    }
+  }, [currentShotIndex, showVideoPlayer]);
+
+  const handlePlayPause = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    if (isPlaying) {
+      video.pause();
+      setIsPlaying(false);
+    } else {
+      video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+    }
+  };
+
+  const handlePrevShot = () => {
+    if (currentShotIndex > 0) {
+      setCurrentShotIndex(prev => prev - 1);
+    }
+  };
+
+  const handleNextShot = () => {
+    if (currentShotIndex < completedShots.length - 1) {
+      setCurrentShotIndex(prev => prev + 1);
+    }
+  };
+
+  const openVideoPlayer = () => {
+    if (completedShots.length > 0) {
+      setCurrentShotIndex(0);
+      setShowVideoPlayer(true);
+      setIsPlaying(true);
+    }
+  };
+
+  const closeVideoPlayer = () => {
+    setShowVideoPlayer(false);
+    setIsPlaying(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+  };
 
   // Handle master video download
   const handleDownloadMaster = async () => {
@@ -208,7 +273,20 @@ const StageExport: React.FC<Props> = ({ project, onApiKeyError }) => {
              </div>
 
              {/* Action Buttons */}
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+               <button 
+                  onClick={openVideoPlayer}
+                  disabled={completedShots.length === 0}
+                  className={`h-12 rounded-lg flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-widest transition-all border ${
+                    completedShots.length > 0
+                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-500 shadow-lg shadow-indigo-500/20'
+                      : 'bg-zinc-900 text-zinc-600 border-zinc-800 cursor-not-allowed'
+                  }`}
+               >
+                 <Play className="w-4 h-4" />
+                 Preview Video ({completedShots.length}/{totalShots})
+               </button>
+
                <button 
                   onClick={handleDownloadMaster}
                   disabled={progress < 100 || isDownloading} 
@@ -271,6 +349,131 @@ const StageExport: React.FC<Props> = ({ project, onApiKeyError }) => {
               <div 
                   onClick={() => setShowLogsModal(true)}
                   className="p-5 bg-[#141414] border border-zinc-800 rounded-xl hover:border-zinc-600 transition-colors group cursor-pointer flex flex-col justify-between h-32"
+              >
+                  <Clock className="w-5 h-5 text-zinc-600 group-hover:text-indigo-400 mb-4 transition-colors" />
+                  <div>
+                    <h4 className="text-sm font-bold text-white mb-1">Render Logs</h4>
+                    <p className="text-[10px] text-zinc-500">View generation history and status.</p>
+                  </div>
+              </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Video Preview Player Modal */}
+      {showVideoPlayer && completedShots.length > 0 && (() => {
+        const currentShot = completedShots[currentShotIndex];
+        const shotOriginalIndex = project.shots.findIndex(s => s.id === currentShot.id);
+        
+        return (
+          <div className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-[#0A0A0A] border border-zinc-800 rounded-xl max-w-6xl w-full flex flex-col shadow-2xl overflow-hidden">
+              {/* Header */}
+              <div className="p-4 border-b border-zinc-800 bg-[#141414] flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <Play className="w-5 h-5 text-indigo-500" />
+                  <h3 className="text-lg font-bold text-white">视频预览</h3>
+                  <span className="px-2 py-0.5 bg-zinc-900 border border-zinc-700 text-zinc-400 text-[10px] rounded uppercase font-mono tracking-wider">
+                    Shot {shotOriginalIndex + 1} / {project.shots.length}
+                  </span>
+                </div>
+                <button
+                  onClick={closeVideoPlayer}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Video Player */}
+              <div className="flex-1 bg-black relative flex items-center justify-center" style={{ minHeight: '60vh', maxHeight: '70vh' }}>
+                <video
+                  ref={videoRef}
+                  key={currentShot.id}
+                  src={currentShot.interval?.videoUrl}
+                  className="w-full h-full object-contain"
+                  autoPlay
+                  controls={false}
+                  playsInline
+                  onEnded={() => {
+                    if (currentShotIndex < completedShots.length - 1) {
+                      setCurrentShotIndex(prev => prev + 1);
+                    } else {
+                      setIsPlaying(false);
+                    }
+                  }}
+                />
+                
+                {/* Play/Pause Overlay Button */}
+                <button
+                  onClick={handlePlayPause}
+                  className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/30 transition-colors group"
+                >
+                  {!isPlaying && (
+                    <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Play className="w-10 h-10 text-white ml-1" />
+                    </div>
+                  )}
+                </button>
+              </div>
+
+              {/* Shot Info */}
+              <div className="p-4 border-t border-zinc-800 bg-[#141414]">
+                <p className="text-sm text-zinc-300 mb-2 line-clamp-2">{currentShot.actionSummary}</p>
+                {currentShot.dialogue && (
+                  <p className="text-xs text-indigo-400 italic">"{currentShot.dialogue}"</p>
+                )}
+              </div>
+
+              {/* Controls */}
+              <div className="p-4 border-t border-zinc-800 bg-[#0A0A0A] flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handlePrevShot}
+                    disabled={currentShotIndex === 0}
+                    className="w-10 h-10 rounded-lg bg-zinc-900 hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors"
+                  >
+                    <SkipBack className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={handlePlayPause}
+                    className="w-12 h-10 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white flex items-center justify-center transition-colors"
+                  >
+                    {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                  </button>
+                  <button
+                    onClick={handleNextShot}
+                    disabled={currentShotIndex === completedShots.length - 1}
+                    className="w-10 h-10 rounded-lg bg-zinc-900 hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors"
+                  >
+                    <SkipForward className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-zinc-500 font-mono">
+                    {currentShotIndex + 1} / {completedShots.length}
+                  </span>
+                  <div className="w-px h-4 bg-zinc-700"></div>
+                  <span className="text-xs text-zinc-500 uppercase tracking-wider">
+                    {currentShot.cameraMovement}
+                  </span>
+                </div>
+
+                <button
+                  onClick={closeVideoPlayer}
+                  className="px-4 py-2 bg-white text-black hover:bg-zinc-200 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/*         className="p-5 bg-[#141414] border border-zinc-800 rounded-xl hover:border-zinc-600 transition-colors group cursor-pointer flex flex-col justify-between h-32"
               >
                   <Clock className="w-5 h-5 text-zinc-600 group-hover:text-indigo-400 mb-4 transition-colors" />
                   <div>
