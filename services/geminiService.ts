@@ -351,11 +351,42 @@ export const generateShotList = async (scriptData: ScriptData, model: string = '
       Characters:
       ${JSON.stringify(scriptData.characters.map(c => ({ id: c.id, name: c.name, desc: c.visualPrompt || c.personality })))}
 
+      Professional Camera Movement Reference (Choose from these categories):
+      - Horizontal Left Shot (向左平移) - Camera moves left
+      - Horizontal Right Shot (向右平移) - Camera moves right
+      - Pan Left Shot (平行向左扫视) - Pan left
+      - Pan Right Shot (平行向右扫视) - Pan right
+      - Vertical Up Shot (向上直线运动) - Move up vertically
+      - Vertical Down Shot (向下直线运动) - Move down vertically
+      - Tilt Up Shot (向上仰角运动) - Tilt upward
+      - Tilt Down Shot (向下俯角运动) - Tilt downward
+      - Zoom Out Shot (镜头缩小/拉远) - Pull back/zoom out
+      - Zoom In Shot (镜头放大/拉近) - Push in/zoom in
+      - Dolly Shot (推镜头) - Dolly in/out movement
+      - Circular Shot (环绕拍摄) - Orbit around subject
+      - Over the Shoulder Shot (越肩镜头) - Over shoulder perspective
+      - Pan Shot (摇镜头) - Pan movement
+      - Low Angle Shot (仰视镜头) - Low angle view
+      - High Angle Shot (俯视镜头) - High angle view
+      - Tracking Shot (跟踪镜头) - Follow subject
+      - Handheld Shot (摇摄镜头) - Handheld camera
+      - Static Shot (静止镜头) - Fixed camera position
+      - POV Shot (主观视角) - Point of view
+      - Bird's Eye View Shot (俯瞰镜头) - Overhead view
+      - 360-Degree Circular Shot (360度环绕) - Full circle
+      - Parallel Tracking Shot (平行跟踪) - Side tracking
+      - Diagonal Tracking Shot (对角跟踪) - Diagonal tracking
+      - Rotating Shot (旋转镜头) - Rotating movement
+      - Slow Motion Shot (慢动作) - Slow-mo effect
+      - Time-Lapse Shot (延时摄影) - Time-lapse
+      - Canted Shot (斜视镜头) - Dutch angle
+      - Cinematic Dolly Zoom (电影式变焦推轨) - Vertigo effect
+
       Instructions:
       1. Create EXACTLY ${shotsPerScene} shots (or ${shotsPerScene - 1} to ${shotsPerScene + 1} shots if needed for story flow) for this scene.
       2. CRITICAL: Each shot will be 10 seconds. Total shots must match the target duration formula: ${targetSeconds} seconds ÷ 10 = ${totalShotsNeeded} total shots across all scenes.
       3. DO NOT exceed ${shotsPerScene + 1} shots for this scene. Select the most important moments only.
-      4. 'cameraMovement': Use professional terms (e.g., Dolly In, Pan Right, Static, Handheld, Tracking).
+      4. 'cameraMovement': MUST choose from the Professional Camera Movement Reference list above. Use the exact English term (e.g., "Dolly Shot", "Pan Right Shot", "Zoom In Shot", "Tracking Shot").
       5. 'shotSize': Specify the field of view (e.g., Extreme Close-up, Medium Shot, Wide Shot).
       6. 'actionSummary': Detailed description of what happens in the shot (in ${lang}).
       7. 'visualPrompt': Detailed description for image generation in ${visualStyle} style (OUTPUT IN ${lang}). Include style-specific keywords. Keep it under 50 words.
