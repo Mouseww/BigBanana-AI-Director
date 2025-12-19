@@ -597,6 +597,26 @@ Technical Requirements:
      }));
   };
 
+  // 添加角色到当前镜头
+  const handleAddCharacter = (shotId: string, characterId: string) => {
+      updateShot(shotId, (s) => {
+          // 避免重复添加
+          if (s.characters.includes(characterId)) return s;
+          return { ...s, characters: [...s.characters, characterId] };
+      });
+  };
+
+  // 从当前镜头删除角色
+  const handleRemoveCharacter = (shotId: string, characterId: string) => {
+      updateShot(shotId, (s) => {
+          const newCharacters = s.characters.filter(id => id !== characterId);
+          // 同时删除该角色的变体选择
+          const newCharVars = { ...(s.characterVariations || {}) };
+          delete newCharVars[characterId];
+          return { ...s, characters: newCharacters, characterVariations: newCharVars };
+      });
+  };
+
   const goToPrevShot = () => {
     if (activeShotIndex > 0) {
       setActiveShotId(project.shots[activeShotIndex - 1].id);
@@ -614,6 +634,8 @@ Technical Requirements:
       // String comparison for safety
       const scene = project.scriptData.scenes.find(s => String(s.id) === String(activeShot.sceneId));
       const activeCharacters = project.scriptData.characters.filter(c => activeShot.characters.includes(c.id));
+      // 获取可添加的角色（不在当前镜头中的角色）
+      const availableCharacters = project.scriptData.characters.filter(c => !activeShot.characters.includes(c.id));
 
       return (
           <div className="bg-[#141414] p-5 rounded-xl border border-zinc-800 mb-6 space-y-4">
@@ -642,34 +664,63 @@ Technical Requirements:
                     </div>
                     <p className="text-xs text-zinc-500 line-clamp-2">{scene?.atmosphere}</p>
                     
-                    {/* Character List with Variation Selector */}
+                    {/* Character List with Variation Selector and Remove Button */}
                     <div className="flex flex-col gap-2 pt-2">
                          {activeCharacters.map(char => {
                              const hasVars = char.variations && char.variations.length > 0;
                              return (
-                                 <div key={char.id} className="flex items-center justify-between bg-zinc-900 rounded p-1.5 border border-zinc-800">
+                                 <div key={char.id} className="flex items-center justify-between bg-zinc-900 rounded p-1.5 border border-zinc-800 group">
                                      <div className="flex items-center gap-2">
-                                         <div className="w-6 h-6 rounded-full bg-zinc-700 overflow-hidden">
+                                         <div className="w-6 h-6 rounded-full bg-zinc-700 overflow-hidden flex-shrink-0">
                                              {char.referenceImage && <img src={char.referenceImage} className="w-full h-full object-cover" />}
                                          </div>
                                          <span className="text-[11px] text-zinc-300 font-medium">{char.name}</span>
                                      </div>
                                      
-                                     {hasVars && (
-                                         <select 
-                                            value={activeShot.characterVariations?.[char.id] || ""}
-                                            onChange={(e) => handleVariationChange(activeShot.id, char.id, e.target.value)}
-                                            className="bg-black text-[10px] text-zinc-400 border border-zinc-700 rounded px-1.5 py-0.5 max-w-[100px] outline-none focus:border-indigo-500"
+                                     <div className="flex items-center gap-1">
+                                         {hasVars && (
+                                             <select 
+                                                value={activeShot.characterVariations?.[char.id] || ""}
+                                                onChange={(e) => handleVariationChange(activeShot.id, char.id, e.target.value)}
+                                                className="bg-black text-[10px] text-zinc-400 border border-zinc-700 rounded px-1.5 py-0.5 max-w-[100px] outline-none focus:border-indigo-500"
+                                             >
+                                                 <option value="">Default Look</option>
+                                                 {char.variations.map(v => (
+                                                     <option key={v.id} value={v.id}>{v.name}</option>
+                                                 ))}
+                                             </select>
+                                         )}
+                                         <button
+                                             onClick={() => handleRemoveCharacter(activeShot.id, char.id)}
+                                             className="p-1 text-zinc-600 hover:text-red-500 hover:bg-red-500/10 rounded transition-colors opacity-0 group-hover:opacity-100"
+                                             title="移除角色"
                                          >
-                                             <option value="">Default Look</option>
-                                             {char.variations.map(v => (
-                                                 <option key={v.id} value={v.id}>{v.name}</option>
-                                             ))}
-                                         </select>
-                                     )}
+                                             <X className="w-3 h-3" />
+                                         </button>
+                                     </div>
                                  </div>
                              );
                          })}
+                         
+                         {/* Add Character Selector */}
+                         {availableCharacters.length > 0 && (
+                             <div className="flex items-center gap-2 pt-1">
+                                 <select 
+                                     onChange={(e) => {
+                                         if (e.target.value) {
+                                             handleAddCharacter(activeShot.id, e.target.value);
+                                             e.target.value = ""; // Reset selector
+                                         }
+                                     }}
+                                     className="flex-1 bg-zinc-900 text-[11px] text-zinc-400 border border-zinc-700 rounded px-2 py-1.5 outline-none focus:border-indigo-500 hover:border-zinc-600 transition-colors"
+                                 >
+                                     <option value="">+ 添加角色到此镜头</option>
+                                     {availableCharacters.map(char => (
+                                         <option key={char.id} value={char.id}>{char.name}</option>
+                                     ))}
+                                 </select>
+                             </div>
+                         )}
                     </div>
                   </div>
               </div>
