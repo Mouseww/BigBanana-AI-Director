@@ -207,7 +207,21 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
     // Robustly handle missing keyframe object
     const existingKf = shot.keyframes?.find(k => k.type === type);
     const kfId = existingKf?.id || `kf-${shot.id}-${type}-${Date.now()}`;
-    let prompt = existingKf?.visualPrompt || shot.actionSummary;
+    
+    // FIXED: 始终从 actionSummary 开始构建提示词，避免重复追加已有的 Visual Style 等信息
+    // 如果 existingKf 存在且有 visualPrompt，检查它是否已经包含了追加的样式信息
+    // 如果包含（有 "Visual Style:" 字样），则提取原始部分；否则使用 actionSummary
+    let basePrompt = shot.actionSummary;
+    if (existingKf?.visualPrompt) {
+      const visualStyleIndex = existingKf.visualPrompt.indexOf('\n\nVisual Style:');
+      if (visualStyleIndex > 0) {
+        // 已经包含追加的样式信息，提取原始部分
+        basePrompt = existingKf.visualPrompt.substring(0, visualStyleIndex);
+      } else {
+        // 没有追加样式信息，直接使用
+        basePrompt = existingKf.visualPrompt;
+      }
+    }
     
     // 获取视觉风格
     const visualStyle = project.visualStyle || project.scriptData?.visualStyle || 'live-action';
@@ -227,9 +241,9 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
     // 根据镜头运动类型添加构图和视角提示
     const cameraMovementGuide = getCameraMovementCompositionGuide(shot.cameraMovement, type);
     
-    // 添加视觉风格、镜头运动和画面要求
+    // 构建完整提示词：基础描述 + 视觉风格 + 镜头运动 + 画面要求
     const selectedModel = shot.videoModel || 'sora-2';
-    prompt = `${prompt}\n\nVisual Style: ${stylePrompt}\n\nCamera Movement: ${shot.cameraMovement} (${type === 'start' ? 'Initial' : 'Final'} frame)\n${cameraMovementGuide}\n\nVisual Requirements: High definition, cinematic composition, 16:9 widescreen format. Focus on lighting hierarchy, color saturation, and depth of field effects. Ensure the subject is clear and the background transitions naturally.`;
+    const prompt = `${basePrompt}\n\nVisual Style: ${stylePrompt}\n\nCamera Movement: ${shot.cameraMovement} (${type === 'start' ? 'Initial' : 'Final'} frame)\n${cameraMovementGuide}\n\nVisual Requirements: High definition, cinematic composition, 16:9 widescreen format. Focus on lighting hierarchy, color saturation, and depth of field effects. Ensure the subject is clear and the background transitions naturally.`;
     
     // 先设置状态为generating，这样即使切换页面状态也会保留
     updateProject((prevProject: ProjectState) => ({
