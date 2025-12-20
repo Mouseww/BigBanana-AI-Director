@@ -1,0 +1,364 @@
+import React, { useState, useEffect } from 'react';
+import { ProjectState } from '../../types';
+import { parseScriptToData, generateShotList, continueScript, rewriteScript } from '../../services/geminiService';
+import { getFinalValue, validateConfig } from './utils';
+import { DEFAULTS } from './constants';
+import ConfigPanel from './ConfigPanel';
+import ScriptEditor from './ScriptEditor';
+import SceneBreakdown from './SceneBreakdown';
+
+interface Props {
+  project: ProjectState;
+  updateProject: (updates: Partial<ProjectState> | ((prev: ProjectState) => ProjectState)) => void;
+}
+
+type TabMode = 'story' | 'script';
+
+const StageScript: React.FC<Props> = ({ project, updateProject }) => {
+  const [activeTab, setActiveTab] = useState<TabMode>(project.scriptData ? 'script' : 'story');
+  
+  // Configuration state
+  const [localScript, setLocalScript] = useState(project.rawScript);
+  const [localTitle, setLocalTitle] = useState(project.title);
+  const [localDuration, setLocalDuration] = useState(project.targetDuration || DEFAULTS.duration);
+  const [localLanguage, setLocalLanguage] = useState(project.language || DEFAULTS.language);
+  const [localModel, setLocalModel] = useState(project.shotGenerationModel || DEFAULTS.model);
+  const [localVisualStyle, setLocalVisualStyle] = useState(project.visualStyle || DEFAULTS.visualStyle);
+  const [customDurationInput, setCustomDurationInput] = useState('');
+  const [customModelInput, setCustomModelInput] = useState('');
+  const [customStyleInput, setCustomStyleInput] = useState('');
+  
+  // Processing state
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isContinuing, setIsContinuing] = useState(false);
+  const [isRewriting, setIsRewriting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Editing state - unified
+  const [editingCharacterId, setEditingCharacterId] = useState<string | null>(null);
+  const [editingCharacterPrompt, setEditingCharacterPrompt] = useState('');
+  const [editingShotId, setEditingShotId] = useState<string | null>(null);
+  const [editingShotPrompt, setEditingShotPrompt] = useState('');
+  const [editingShotCharactersId, setEditingShotCharactersId] = useState<string | null>(null);
+  const [editingShotActionId, setEditingShotActionId] = useState<string | null>(null);
+  const [editingShotActionText, setEditingShotActionText] = useState('');
+  const [editingShotDialogueText, setEditingShotDialogueText] = useState('');
+
+  useEffect(() => {
+    setLocalScript(project.rawScript);
+    setLocalTitle(project.title);
+    setLocalDuration(project.targetDuration || DEFAULTS.duration);
+    setLocalLanguage(project.language || DEFAULTS.language);
+    setLocalModel(project.shotGenerationModel || DEFAULTS.model);
+    setLocalVisualStyle(project.visualStyle || DEFAULTS.visualStyle);
+  }, [project.id]);
+
+  const handleAnalyze = async () => {
+    const finalDuration = getFinalValue(localDuration, customDurationInput);
+    const finalModel = getFinalValue(localModel, customModelInput);
+    const finalVisualStyle = getFinalValue(localVisualStyle, customStyleInput);
+
+    const validation = validateConfig({
+      script: localScript,
+      duration: finalDuration,
+      model: finalModel,
+      visualStyle: finalVisualStyle
+    });
+
+    if (!validation.valid) {
+      setError(validation.error);
+      return;
+    }
+
+    console.log('🎯 用户选择的模型:', localModel);
+    console.log('🎯 最终使用的模型:', finalModel);
+    console.log('🎨 视觉风格:', finalVisualStyle);
+
+    setIsProcessing(true);
+    setError(null);
+    try {
+      updateProject({
+        title: localTitle,
+        rawScript: localScript,
+        targetDuration: finalDuration,
+        language: localLanguage,
+        visualStyle: finalVisualStyle,
+        shotGenerationModel: finalModel,
+        isParsingScript: true
+      });
+
+      console.log('📞 调用 parseScriptToData, 传入模型:', finalModel);
+      const scriptData = await parseScriptToData(localScript, localLanguage, finalModel, finalVisualStyle);
+      
+      scriptData.targetDuration = finalDuration;
+      scriptData.language = localLanguage;
+      scriptData.visualStyle = finalVisualStyle;
+      scriptData.shotGenerationModel = finalModel;
+
+      if (localTitle && localTitle !== "未命名项目") {
+        scriptData.title = localTitle;
+      }
+
+      console.log('📞 调用 generateShotList, 传入模型:', finalModel);
+      const shots = await generateShotList(scriptData, finalModel);
+
+      updateProject({ 
+        scriptData, 
+        shots, 
+        isParsingScript: false,
+        title: scriptData.title 
+      });
+      
+      setActiveTab('script');
+
+    } catch (err: any) {
+      console.error(err);
+      setError(`错误: ${err.message || "AI 连接失败"}`);
+      updateProject({ isParsingScript: false });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleContinueScript = async () => {
+    const finalModel = getFinalValue(localModel, customModelInput);
+    
+    if (!localScript.trim()) {
+      setError("请先输入一些剧本内容作为基础。");
+      return;
+    }
+    if (!finalModel) {
+      setError("请选择或输入模型名称。");
+      return;
+    }
+
+    setIsContinuing(true);
+    setError(null);
+    try {
+      const continuedContent = await continueScript(localScript, localLanguage, finalModel);
+      const newScript = localScript + '\n\n' + continuedContent;
+      setLocalScript(newScript);
+      updateProject({ rawScript: newScript });
+    } catch (err: any) {
+      console.error(err);
+      setError(`AI续写失败: ${err.message || "连接失败"}`);
+    } finally {
+      setIsContinuing(false);
+    }
+  };
+
+  const handleRewriteScript = async () => {
+    const finalModel = getFinalValue(localModel, customModelInput);
+    
+    if (!localScript.trim()) {
+      setError("请先输入剧本内容。");
+      return;
+    }
+    if (!finalModel) {
+      setError("请选择或输入模型名称。");
+      return;
+    }
+
+    setIsRewriting(true);
+    setError(null);
+    try {
+      const rewrittenContent = await rewriteScript(localScript, localLanguage, finalModel);
+      setLocalScript(rewrittenContent);
+      updateProject({ rawScript: rewrittenContent });
+    } catch (err: any) {
+      console.error(err);
+      setError(`AI改写失败: ${err.message || "连接失败"}`);
+    } finally {
+      setIsRewriting(false);
+    }
+  };
+
+  // Character editing handlers
+  const handleEditCharacter = (charId: string, prompt: string) => {
+    setEditingCharacterId(charId);
+    setEditingCharacterPrompt(prompt);
+  };
+
+  const handleSaveCharacter = (charId: string, prompt: string) => {
+    if (!project.scriptData) return;
+    
+    const updatedCharacters = project.scriptData.characters.map(c => 
+      c.id === charId ? { ...c, visualPrompt: prompt } : c
+    );
+    
+    updateProject({
+      scriptData: {
+        ...project.scriptData,
+        characters: updatedCharacters
+      }
+    });
+    
+    setEditingCharacterId(null);
+    setEditingCharacterPrompt('');
+  };
+
+  const handleCancelCharacterEdit = () => {
+    setEditingCharacterId(null);
+    setEditingCharacterPrompt('');
+  };
+
+  // Shot prompt editing handlers
+  const handleEditShotPrompt = (shotId: string, prompt: string) => {
+    setEditingShotId(shotId);
+    setEditingShotPrompt(prompt);
+  };
+
+  const handleSaveShotPrompt = () => {
+    if (!editingShotId) return;
+    
+    const updatedShots = project.shots.map(shot => {
+      if (shot.id === editingShotId && shot.keyframes.length > 0) {
+        return {
+          ...shot,
+          keyframes: shot.keyframes.map((kf, idx) => 
+            idx === 0 ? { ...kf, visualPrompt: editingShotPrompt } : kf
+          )
+        };
+      }
+      return shot;
+    });
+    
+    updateProject({ shots: updatedShots });
+    setEditingShotId(null);
+    setEditingShotPrompt('');
+  };
+
+  const handleCancelShotPrompt = () => {
+    setEditingShotId(null);
+    setEditingShotPrompt('');
+  };
+
+  // Shot characters editing handlers
+  const handleEditShotCharacters = (shotId: string) => {
+    setEditingShotCharactersId(shotId);
+  };
+
+  const handleAddCharacterToShot = (shotId: string, characterId: string) => {
+    const updatedShots = project.shots.map(shot => {
+      if (shot.id === shotId && !shot.characters.includes(characterId)) {
+        return { ...shot, characters: [...shot.characters, characterId] };
+      }
+      return shot;
+    });
+    updateProject({ shots: updatedShots });
+  };
+
+  const handleRemoveCharacterFromShot = (shotId: string, characterId: string) => {
+    const updatedShots = project.shots.map(shot => {
+      if (shot.id === shotId) {
+        return { ...shot, characters: shot.characters.filter(cid => cid !== characterId) };
+      }
+      return shot;
+    });
+    updateProject({ shots: updatedShots });
+  };
+
+  const handleCloseShotCharactersEdit = () => {
+    setEditingShotCharactersId(null);
+  };
+
+  // Shot action editing handlers
+  const handleEditShotAction = (shotId: string, action: string, dialogue: string) => {
+    setEditingShotActionId(shotId);
+    setEditingShotActionText(action);
+    setEditingShotDialogueText(dialogue);
+  };
+
+  const handleSaveShotAction = () => {
+    if (!editingShotActionId) return;
+    
+    const updatedShots = project.shots.map(shot => {
+      if (shot.id === editingShotActionId) {
+        return {
+          ...shot,
+          actionSummary: editingShotActionText,
+          dialogue: editingShotDialogueText.trim() || undefined
+        };
+      }
+      return shot;
+    });
+    
+    updateProject({ shots: updatedShots });
+    setEditingShotActionId(null);
+    setEditingShotActionText('');
+    setEditingShotDialogueText('');
+  };
+
+  const handleCancelShotAction = () => {
+    setEditingShotActionId(null);
+    setEditingShotActionText('');
+    setEditingShotDialogueText('');
+  };
+
+  return (
+    <div className="h-full bg-[#050505]">
+      {activeTab === 'story' ? (
+        <div className="flex h-full bg-[#050505] text-zinc-300">
+          <ConfigPanel
+            title={localTitle}
+            duration={localDuration}
+            language={localLanguage}
+            model={localModel}
+            visualStyle={localVisualStyle}
+            customDurationInput={customDurationInput}
+            customModelInput={customModelInput}
+            customStyleInput={customStyleInput}
+            isProcessing={isProcessing}
+            error={error}
+            onTitleChange={setLocalTitle}
+            onDurationChange={setLocalDuration}
+            onLanguageChange={setLocalLanguage}
+            onModelChange={setLocalModel}
+            onVisualStyleChange={setLocalVisualStyle}
+            onCustomDurationChange={setCustomDurationInput}
+            onCustomModelChange={setCustomModelInput}
+            onCustomStyleChange={setCustomStyleInput}
+            onAnalyze={handleAnalyze}
+          />
+          <ScriptEditor
+            script={localScript}
+            onChange={setLocalScript}
+            onContinue={handleContinueScript}
+            onRewrite={handleRewriteScript}
+            isContinuing={isContinuing}
+            isRewriting={isRewriting}
+            lastModified={project.lastModified}
+          />
+        </div>
+      ) : (
+        <SceneBreakdown
+          project={project}
+          editingCharacterId={editingCharacterId}
+          editingCharacterPrompt={editingCharacterPrompt}
+          editingShotId={editingShotId}
+          editingShotPrompt={editingShotPrompt}
+          editingShotCharactersId={editingShotCharactersId}
+          editingShotActionId={editingShotActionId}
+          editingShotActionText={editingShotActionText}
+          editingShotDialogueText={editingShotDialogueText}
+          onEditCharacter={handleEditCharacter}
+          onSaveCharacter={handleSaveCharacter}
+          onCancelCharacterEdit={handleCancelCharacterEdit}
+          onEditShotPrompt={handleEditShotPrompt}
+          onSaveShotPrompt={handleSaveShotPrompt}
+          onCancelShotPrompt={handleCancelShotPrompt}
+          onEditShotCharacters={handleEditShotCharacters}
+          onAddCharacterToShot={handleAddCharacterToShot}
+          onRemoveCharacterFromShot={handleRemoveCharacterFromShot}
+          onCloseShotCharactersEdit={handleCloseShotCharactersEdit}
+          onEditShotAction={handleEditShotAction}
+          onSaveShotAction={handleSaveShotAction}
+          onCancelShotAction={handleCancelShotAction}
+          onBackToStory={() => setActiveTab('story')}
+        />
+      )}
+    </div>
+  );
+};
+
+export default StageScript;
