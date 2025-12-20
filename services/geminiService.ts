@@ -111,10 +111,29 @@ const retryOperation = async <T>(operation: () => Promise<T>, maxRetries: number
  * @param str - 原始字符串
  * @returns 清理后的JSON字符串
  */
+/**
+ * 清理AI返回的JSON字符串，移除markdown代码块标记
+ * 处理以下格式:
+ * - ```json\n{...}\n```
+ * - ```{...}```
+ * - ``` json\n{...}\n```
+ * @param str - 原始字符串
+ * @returns 清理后的JSON字符串
+ */
 const cleanJsonString = (str: string): string => {
   if (!str) return "{}";
-  // Remove ```json ... ``` or ``` ... ```
-  let cleaned = str.replace(/```json\n?/g, '').replace(/```/g, '');
+  
+  // 移除markdown代码块标记（包括可能的语言标识符和空格）
+  // 1. 匹配 ```json 或 ``` json 或 ``` (开头)
+  // 2. 匹配 ``` (结尾)
+  let cleaned = str.trim();
+  
+  // 移除开头的代码块标记: ```json, ``` json, 或 ```
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, '');
+  
+  // 移除结尾的代码块标记: ```
+  cleaned = cleaned.replace(/```\s*$/, '');
+  
   return cleaned.trim();
 };
 
