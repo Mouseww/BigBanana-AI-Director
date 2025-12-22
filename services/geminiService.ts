@@ -692,6 +692,14 @@ export const generateImage = async (prompt: string, referenceImages: string[] = 
     });
 
     if (!res.ok) {
+      // 特殊处理400、500状态码 - 提示词被风控拦截
+      if (res.status === 400) {
+        throw new Error('提示词可能包含不安全或违规内容，未能处理。请修改后重试。');
+      }
+      else if (res.status === 500) {
+        throw new Error('当前请求较多，暂时未能处理成功，请稍后重试。');
+      }
+      
       let errorMessage = `HTTP错误: ${res.status}`;
       try {
         const errorData = await res.json();
@@ -849,6 +857,14 @@ export const generateVideo = async (prompt: string, startImageBase64?: string, e
       });
 
       if (!res.ok) {
+        // 特殊处理400、500状态码 - 提示词被风控拦截
+      if (res.status === 400) {
+        throw new Error('提示词可能包含不安全或违规内容，未能处理。请修改后重试。');
+      }
+      else if (res.status === 500) {
+        throw new Error('当前请求较多，暂时未能处理成功，请稍后重试。');
+      }
+        
         let errorMessage = `HTTP错误: ${res.status}`;
         try {
           const errorData = await res.json();
