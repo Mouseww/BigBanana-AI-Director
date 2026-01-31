@@ -76,6 +76,22 @@ This project deeply integrates [**antsk API Platform**](https://api.antsk.cn/), 
 
 [**Sign Up for Free Credits**](https://api.antsk.cn/) →
 
+---
+
+### 🎨 Lightweight Creation Tools
+
+For **quick one-off creative tasks**, try our online tool platform:
+
+**[BigBanana Creation Studio](https://bigbanana.tree456.com/)** offers:
+* 📷 **AI Image Generation**: Text-to-image with multiple styles
+* 📊 **AI PowerPoint**: Generate presentations instantly
+* 📱 **Social Media Content**: Viral titles and posts for Xiaohongshu
+* ✍️ **AI Writing**: Articles, scripts, marketing copy, and more
+* 🎭 **No Installation**: Use directly in browser, instant access
+
+**Best For**: Daily creation, rapid prototyping, idea validation  
+**This Project Is For**: Systematic drama production, batch video generation, industrial workflows
+
 ## Quick Start
 
 1.  **Configure Key**: Launch the app and input your antsk API Key. [**Buy API Key**](https://api.antsk.cn)
