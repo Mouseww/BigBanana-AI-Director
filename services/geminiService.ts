@@ -987,49 +987,87 @@ const generateVideoWithSora2 = async (prompt: string, startImageBase64: string |
   
   console.log('✅ sora-2视频生成完成，视频ID:', videoId);
   
-  // Step 3: 下载视频内容
-  const downloadResponse = await fetch(`${ANTSK_API_BASE}/v1/videos/${videoId}/content`, {
-    method: 'GET',
-    headers: {
-      'Accept': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    }
-  });
+  // Step 3: 下载视频内容（带重试和超时机制）
+  const maxDownloadRetries = 5;
+  const downloadTimeout = 600000; // 10分钟超时
   
-  if (!downloadResponse.ok) {
-    throw new Error(`下载视频失败: HTTP ${downloadResponse.status}`);
-  }
-  
-  // 检查响应类型，可能直接返回视频blob或返回URL
-  const contentType = downloadResponse.headers.get('content-type');
-  
-  if (contentType && contentType.includes('video')) {
-    // 直接返回视频数据
-    const videoBlob = await downloadResponse.blob();
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
+  for (let attempt = 1; attempt <= maxDownloadRetries; attempt++) {
+    try {
+      console.log(`📥 尝试下载视频 (第${attempt}/${maxDownloadRetries}次)...`);
+      
+      const downloadController = new AbortController();
+      const downloadTimeoutId = setTimeout(() => downloadController.abort(), downloadTimeout);
+      
+      const downloadResponse = await fetch(`${ANTSK_API_BASE}/v1/videos/${videoId}/content`, {
+        method: 'GET',
+        headers: {
+          'Accept': '*/*',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        signal: downloadController.signal
+      });
+      
+      clearTimeout(downloadTimeoutId);
+      
+      if (!downloadResponse.ok) {
+        // 502/503/504 等服务器错误可以重试
+        if (downloadResponse.status >= 500 && attempt < maxDownloadRetries) {
+          console.warn(`⚠️ 下载失败 HTTP ${downloadResponse.status}，${5 * attempt}秒后重试...`);
+          await new Promise(resolve => setTimeout(resolve, 5000 * attempt));
+          continue;
+        }
+        throw new Error(`下载视频失败: HTTP ${downloadResponse.status}`);
+      }
+      
+      // 检查响应类型，可能直接返回视频blob或返回URL
+      const contentType = downloadResponse.headers.get('content-type');
+      
+      if (contentType && contentType.includes('video')) {
+        // 直接返回视频数据
+        const videoBlob = await downloadResponse.blob();
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            console.log('✅ sora-2视频已转换为base64格式');
+            resolve(result);
+          };
+          reader.onerror = () => reject(new Error('视频转base64失败'));
+          reader.readAsDataURL(videoBlob);
+        });
+      } else {
+        // 可能返回JSON包含URL
+        const downloadData = await downloadResponse.json();
+        const videoUrl = downloadData.url || downloadData.video_url || downloadData.download_url;
+        
+        if (!videoUrl) {
+          throw new Error('未获取到视频下载地址');
+        }
+        
+        // 下载并转换为base64
+        const videoBase64 = await convertVideoUrlToBase64(videoUrl);
         console.log('✅ sora-2视频已转换为base64格式');
-        resolve(result);
-      };
-      reader.onerror = () => reject(new Error('视频转base64失败'));
-      reader.readAsDataURL(videoBlob);
-    });
-  } else {
-    // 可能返回JSON包含URL
-    const downloadData = await downloadResponse.json();
-    const videoUrl = downloadData.url || downloadData.video_url || downloadData.download_url;
-    
-    if (!videoUrl) {
-      throw new Error('未获取到视频下载地址');
+        return videoBase64;
+      }
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.warn(`⚠️ 下载超时，${5 * attempt}秒后重试...`);
+        if (attempt < maxDownloadRetries) {
+          await new Promise(resolve => setTimeout(resolve, 5000 * attempt));
+          continue;
+        }
+        throw new Error('下载视频超时 (10分钟)');
+      }
+      // 其他错误在最后一次重试时抛出
+      if (attempt === maxDownloadRetries) {
+        throw error;
+      }
+      console.warn(`⚠️ 下载出错: ${error.message}，${5 * attempt}秒后重试...`);
+      await new Promise(resolve => setTimeout(resolve, 5000 * attempt));
     }
-    
-    // 下载并转换为base64
-    const videoBase64 = await convertVideoUrlToBase64(videoUrl);
-    console.log('✅ sora-2视频已转换为base64格式');
-    return videoBase64;
   }
+  
+  throw new Error('下载视频失败：已达最大重试次数');
 };
 
 /**
