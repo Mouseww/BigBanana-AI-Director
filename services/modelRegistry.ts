@@ -290,13 +290,22 @@ export const setActiveModel = (type: ModelType, modelId: string): boolean => {
 
 /**
  * 注册新模型
+ * @param model - 模型定义（可包含自定义 id，不包含 isBuiltIn）
  */
-export const registerModel = (model: Omit<ModelDefinition, 'id' | 'isBuiltIn'>): ModelDefinition => {
+export const registerModel = (model: Omit<ModelDefinition, 'isBuiltIn'> & { id?: string }): ModelDefinition => {
   const state = loadRegistry();
+  
+  // 使用用户提供的 ID，如果没有则自动生成
+  const modelId = (model as any).id?.trim() || `model_${Date.now()}`;
+  
+  // 检查 ID 是否已存在
+  if (state.models.some(m => m.id === modelId)) {
+    throw new Error(`模型 ID "${modelId}" 已存在，请使用其他 ID`);
+  }
   
   const newModel = {
     ...model,
-    id: `model_${Date.now()}`,
+    id: modelId,
     isBuiltIn: false,
   } as ModelDefinition;
   

@@ -111,14 +111,17 @@ const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) =
           />
         </div>
         <div>
-          <label className="text-[10px] text-zinc-500 block mb-1">模型 ID *</label>
+          <label className="text-[10px] text-zinc-500 block mb-1">模型 ID *（API 实际使用的模型名）</label>
           <input
             type="text"
             value={modelId}
             onChange={(e) => setModelId(e.target.value)}
-            placeholder="如：gpt-4-turbo"
+            placeholder="如：gpt-4-turbo、claude-3-opus"
             className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-xs text-white placeholder:text-zinc-600 font-mono"
           />
+          <p className="text-[9px] text-zinc-600 mt-1">
+            此 ID 会作为 API 请求中的 model 参数，请填写正确的模型名称
+          </p>
         </div>
       </div>
 
