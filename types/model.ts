@@ -82,6 +82,7 @@ export interface ModelDefinitionBase {
   description?: string;          // 描述
   isBuiltIn: boolean;            // 是否内置（内置模型不可删除）
   isEnabled: boolean;            // 是否启用
+  apiKey?: string;               // 模型专属 API Key（可选，为空时使用全局 Key）
 }
 
 /**

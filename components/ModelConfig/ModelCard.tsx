@@ -30,6 +30,7 @@ const ModelCard: React.FC<ModelCardProps> = ({
   onDelete,
 }) => {
   const [editParams, setEditParams] = useState<any>(model.params);
+  const [editApiKey, setEditApiKey] = useState<string>(model.apiKey || '');
 
   const handleParamChange = (key: string, value: any) => {
     const newParams = { ...editParams, [key]: value };
@@ -39,6 +40,11 @@ const ModelCard: React.FC<ModelCardProps> = ({
 
   const handleToggleEnabled = () => {
     onUpdate({ isEnabled: !model.isEnabled });
+  };
+
+  const handleApiKeyChange = (value: string) => {
+    setEditApiKey(value);
+    onUpdate({ apiKey: value.trim() || undefined });
   };
 
   const renderChatParams = (params: ChatModelParams) => (
@@ -204,6 +210,23 @@ const ModelCard: React.FC<ModelCardProps> = ({
       {isExpanded && (
         <div className="px-4 pb-4 pt-0 border-t border-zinc-800">
           <div className="pt-4 space-y-4">
+            {/* 模型专属 API Key */}
+            <div>
+              <label className="text-[10px] text-zinc-500 block mb-1">
+                API Key（留空使用全局 Key）
+              </label>
+              <input
+                type="password"
+                value={editApiKey}
+                onChange={(e) => handleApiKeyChange(e.target.value)}
+                placeholder="留空则使用全局 API Key"
+                className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-xs text-white placeholder:text-zinc-600 font-mono"
+              />
+              {model.apiKey && (
+                <p className="text-[9px] text-green-500 mt-1">✓ 已配置专属 Key</p>
+              )}
+            </div>
+            
             {model.type === 'chat' && renderChatParams(model.params)}
             {model.type === 'image' && renderImageParams(model.params)}
             {model.type === 'video' && renderVideoParams(model.params)}

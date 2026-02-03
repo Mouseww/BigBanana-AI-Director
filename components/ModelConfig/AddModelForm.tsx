@@ -31,6 +31,7 @@ const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) =
   const [modelId, setModelId] = useState('');
   const [description, setDescription] = useState('');
   const [endpoint, setEndpoint] = useState('');
+  const [apiKey, setApiKey] = useState('');
   const [videoMode, setVideoMode] = useState<'sync' | 'async'>('sync');
   
   // 提供商配置
@@ -84,6 +85,7 @@ const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) =
       providerId,
       endpoint: endpoint.trim() || undefined,
       description: description.trim() || undefined,
+      apiKey: apiKey.trim() || undefined,
       isEnabled: true,
       params,
     } as any;
@@ -148,6 +150,21 @@ const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) =
         />
         <p className="text-[9px] text-zinc-600 mt-1">
           留空则使用默认端点
+        </p>
+      </div>
+
+      {/* 模型专属 API Key */}
+      <div>
+        <label className="text-[10px] text-zinc-500 block mb-1">API Key（可选）</label>
+        <input
+          type="password"
+          value={apiKey}
+          onChange={(e) => setApiKey(e.target.value)}
+          placeholder="留空则使用全局 API Key"
+          className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-xs text-white placeholder:text-zinc-600 font-mono"
+        />
+        <p className="text-[9px] text-zinc-600 mt-1">
+          为此模型单独配置 API Key，留空则使用全局配置的 Key
         </p>
       </div>
 

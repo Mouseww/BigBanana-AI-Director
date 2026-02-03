@@ -389,14 +389,25 @@ export const setGlobalApiKey = (apiKey: string): void => {
 
 /**
  * 获取模型对应的 API Key
- * 优先使用提供商的独立 Key，否则使用全局 Key
+ * 优先级：模型专属 Key > 提供商 Key > 全局 Key
  */
 export const getApiKeyForModel = (modelId: string): string | undefined => {
   const model = getModelById(modelId);
   if (!model) return getGlobalApiKey();
   
+  // 1. 优先使用模型专属 API Key
+  if (model.apiKey) {
+    return model.apiKey;
+  }
+  
+  // 2. 其次使用提供商的 API Key
   const provider = getProviderById(model.providerId);
-  return provider?.apiKey || getGlobalApiKey();
+  if (provider?.apiKey) {
+    return provider.apiKey;
+  }
+  
+  // 3. 最后使用全局 API Key
+  return getGlobalApiKey();
 };
 
 /**
