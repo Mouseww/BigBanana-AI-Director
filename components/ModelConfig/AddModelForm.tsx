@@ -17,6 +17,7 @@ import {
   DEFAULT_VIDEO_PARAMS_VEO,
 } from '../../types/model';
 import { getProviders, addProvider } from '../../services/modelRegistry';
+import { useAlert } from '../GlobalAlert';
 
 interface AddModelFormProps {
   type: ModelType;
@@ -26,6 +27,7 @@ interface AddModelFormProps {
 
 const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) => {
   const existingProviders = getProviders();
+  const { showAlert } = useAlert();
   
   const [name, setName] = useState('');
   const [modelId, setModelId] = useState('');
@@ -45,7 +47,7 @@ const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) =
 
   const handleSave = () => {
     if (!name.trim() || !modelId.trim()) {
-      alert('请填写模型名称和模型 ID');
+      showAlert('请填写模型名称和模型 ID', { type: 'warning' });
       return;
     }
 
@@ -54,7 +56,7 @@ const AddModelForm: React.FC<AddModelFormProps> = ({ type, onSave, onCancel }) =
     
     if (providerMode === 'custom') {
       if (!customProviderName.trim() || !customProviderBaseUrl.trim()) {
-        alert('请填写自定义提供商名称和 API 基础 URL');
+        showAlert('请填写自定义提供商名称和 API 基础 URL', { type: 'warning' });
         return;
       }
       // 创建新提供商

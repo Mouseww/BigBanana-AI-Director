@@ -338,14 +338,24 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
     
     let shotsToProcess = [];
     if (isRegenerate) {
-      if (!window.confirm("确定要重新生成所有镜头的首帧吗？这将覆盖现有图片。")) return;
-      shotsToProcess = [...project.shots];
+      showAlert("确定要重新生成所有镜头的首帧吗？这将覆盖现有图片。", {
+        type: 'warning',
+        showCancel: true,
+        onConfirm: async () => {
+          shotsToProcess = [...project.shots];
+          await executeBatchGenerate(shotsToProcess, isRegenerate);
+        }
+      });
+      return;
     } else {
       shotsToProcess = project.shots.filter(s => !s.keyframes?.find(k => k.type === 'start')?.imageUrl);
     }
     
     if (shotsToProcess.length === 0) return;
+    await executeBatchGenerate(shotsToProcess, isRegenerate);
+  };
 
+  const executeBatchGenerate = async (shotsToProcess: any[], isRegenerate: boolean) => {
     setBatchProgress({ 
       current: 0, 
       total: shotsToProcess.length, 

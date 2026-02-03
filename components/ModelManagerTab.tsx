@@ -13,6 +13,7 @@ import {
   Sparkles,
   Gift
 } from 'lucide-react';
+import { useAlert } from './GlobalAlert';
 import { 
   ModelProvider, 
   ModelConfig, 
@@ -41,6 +42,7 @@ interface ModelManagerTabProps {
 }
 
 const ModelManagerTab: React.FC<ModelManagerTabProps> = ({ onConfigChange }) => {
+  const { showAlert } = useAlert();
   const [providers, setProviders] = useState<ModelProvider[]>([]);
   const [config, setConfig] = useState<ModelConfig | null>(null);
   const [defaultAspectRatio, setAspectRatio] = useState<AspectRatio>('16:9');
@@ -106,11 +108,16 @@ const ModelManagerTab: React.FC<ModelManagerTabProps> = ({ onConfigChange }) => 
 
   // 删除提供商
   const handleDeleteProvider = (id: string) => {
-    if (confirm('确定要删除这个提供商吗？')) {
-      deleteProvider(id);
-      loadConfig();
-      onConfigChange?.();
-    }
+    showAlert('确定要删除这个提供商吗？', {
+      type: 'warning',
+      showCancel: true,
+      onConfirm: () => {
+        deleteProvider(id);
+        loadConfig();
+        onConfigChange?.();
+        showAlert('提供商已删除', { type: 'success' });
+      }
+    });
   };
 
   // 更新模型配置

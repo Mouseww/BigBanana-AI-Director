@@ -53,12 +53,17 @@ const ModelList: React.FC<ModelListProps> = ({ type, onRefresh }) => {
   };
 
   const handleDeleteModel = (modelId: string) => {
-    if (confirm('确定要删除这个模型吗？')) {
-      if (removeModel(modelId)) {
-        loadModels();
-        onRefresh();
+    showAlert('确定要删除这个模型吗？', {
+      type: 'warning',
+      showCancel: true,
+      onConfirm: () => {
+        if (removeModel(modelId)) {
+          loadModels();
+          onRefresh();
+          showAlert('模型已删除', { type: 'success' });
+        }
       }
-    }
+    });
   };
 
   const handleAddModel = (model: Omit<ModelDefinition, 'id' | 'isBuiltIn'>) => {

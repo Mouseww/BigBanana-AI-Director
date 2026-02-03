@@ -214,10 +214,20 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
     const isRegenerate = itemsToGen.length === 0;
 
     if (isRegenerate) {
-      if (!window.confirm(`确定要重新生成所有${type === 'character' ? '角色' : '场景'}图吗？`)) return;
+      showAlert(`确定要重新生成所有${type === 'character' ? '角色' : '场景'}图吗？`, {
+        type: 'warning',
+        showCancel: true,
+        onConfirm: async () => {
+          await executeBatchGenerate(items, type);
+        }
+      });
+      return;
     }
 
-    const targetItems = isRegenerate ? items : itemsToGen;
+    await executeBatchGenerate(itemsToGen, type);
+  };
+
+  const executeBatchGenerate = async (targetItems: any[], type: 'character' | 'scene') => {
     setBatchProgress({ current: 0, total: targetItems.length });
 
     for (let i = 0; i < targetItems.length; i++) {
