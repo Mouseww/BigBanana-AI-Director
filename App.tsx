@@ -8,6 +8,7 @@ import StagePrompts from './components/StagePrompts';
 import Dashboard from './components/Dashboard';
 import Onboarding, { shouldShowOnboarding, resetOnboarding } from './components/Onboarding';
 import SettingsModal from './components/SettingsModal';
+import ModelConfigModal from './components/ModelConfig';
 import { ProjectState } from './types';
 import { Save, CheckCircle, X } from 'lucide-react';
 import { saveProjectToDB } from './services/storageService';
@@ -24,6 +25,7 @@ function App() {
   const [isMobile, setIsMobile] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showModelConfig, setShowModelConfig] = useState(false);
   
   // Ref to hold debounce timer
   const saveTimeoutRef = useRef<any>(null);
@@ -293,6 +295,7 @@ function App() {
         projectName={project.title}
         onShowOnboarding={handleShowOnboarding}
         onShowSettings={handleShowSettings}
+        onShowModelConfig={() => setShowModelConfig(true)}
       />
       
       <main className="ml-72 flex-1 h-screen overflow-hidden relative">
@@ -332,6 +335,12 @@ function App() {
         onClose={() => setShowSettings(false)}
         currentApiKey={apiKey}
         onSaveApiKey={handleSaveApiKey}
+      />
+
+      {/* Model Config Modal */}
+      <ModelConfigModal
+        isOpen={showModelConfig}
+        onClose={() => setShowModelConfig(false)}
       />
     </div>
   );

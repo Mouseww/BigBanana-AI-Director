@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, X, Film, Edit2, MessageSquare, Sparkles, Loader2, Scissors } from 'lucide-react';
-import { Shot, Character, Scene, ProjectState } from '../../types';
+import { Shot, Character, Scene, ProjectState, AspectRatio, VideoDuration } from '../../types';
 import SceneContext from './SceneContext';
 import KeyframeEditor from './KeyframeEditor';
 import VideoGenerator from './VideoGenerator';
@@ -32,8 +32,8 @@ interface ShotWorkbenchProps {
   onCopyNextStartFrame: () => void;
   useAIEnhancement: boolean;
   onToggleAIEnhancement: () => void;
-  onGenerateVideo: () => void;
-  onModelChange: (model: 'sora-2' | 'veo_3_1_i2v_s_fast_fl_landscape') => void;
+  onGenerateVideo: (aspectRatio: AspectRatio, duration: VideoDuration) => void;
+  onModelChange: (model: 'sora-2' | 'veo') => void;
   onEditVideoPrompt: () => void;
   onImageClick: (url: string, title: string) => void;
 }

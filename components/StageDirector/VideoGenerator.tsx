@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Video, Loader2, Edit2 } from 'lucide-react';
-import { Shot } from '../../types';
+import { Shot, AspectRatio, VideoDuration } from '../../types';
+import { VideoSettingsPanel } from '../AspectRatioSelector';
+import { getDefaultAspectRatio, getDefaultVideoDuration } from '../../services/modelRegistry';
 
 interface VideoGeneratorProps {
   shot: Shot;
   hasStartFrame: boolean;
   hasEndFrame: boolean;
-  onGenerate: () => void;
-  onModelChange: (model: 'sora-2' | 'veo_3_1_i2v_s_fast_fl_landscape') => void;
+  onGenerate: (aspectRatio: AspectRatio, duration: VideoDuration) => void;
+  onModelChange: (model: 'sora-2' | 'veo') => void;
   onEditPrompt: () => void;
 }
 
@@ -19,9 +21,23 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
   onModelChange,
   onEditPrompt
 }) => {
+  // 横竖屏和时长状态
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(() => getDefaultAspectRatio());
+  const [duration, setDuration] = useState<VideoDuration>(() => getDefaultVideoDuration());
+  
   const isGenerating = shot.interval?.status === 'generating';
   const hasVideo = !!shot.interval?.videoUrl;
-  const selectedModel = shot.videoModel || 'sora-2';
+  // 将旧的模型名映射到新的类型
+  const getModelType = (): 'sora' | 'veo' => {
+    if (shot.videoModel === 'sora-2') return 'sora';
+    if (shot.videoModel?.startsWith('veo')) return 'veo';
+    return 'sora'; // 默认 sora
+  };
+  const selectedModelType = getModelType();
+
+  const handleGenerate = () => {
+    onGenerate(aspectRatio, duration);
+  };
 
   return (
     <div className="bg-[#141414] rounded-xl p-5 border border-zinc-800 space-y-4">
@@ -50,18 +66,34 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
           选择视频模型
         </label>
         <select
-          value={selectedModel}
+          value={selectedModelType === 'sora' ? 'sora-2' : 'veo'}
           onChange={(e) => onModelChange(e.target.value as any)}
           className="w-full bg-black text-white border border-zinc-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-indigo-500 transition-colors"
+          disabled={isGenerating}
         >
           <option value="sora-2">Sora-2 (OpenAI)</option>
-          <option value="veo_3_1_i2v_s_fast_fl_landscape">Veo 3.1 (Google)</option>
+          <option value="veo">Veo 3.1 (Google)</option>
         </select>
         <p className="text-[9px] text-zinc-600 font-mono">
-          {selectedModel === 'sora-2' 
-            ? '✦ Sora-2: OpenAI最新视频生成模型，画质精细'
-            : '✦ Veo 3.1: Google高速视频生成，适合快速预览'}
+          {selectedModelType === 'sora' 
+            ? '✦ Sora-2: 支持横屏/竖屏/方形，可选4/8/12秒时长'
+            : '✦ Veo 3.1: 高速生成，仅支持横屏/竖屏'}
         </p>
+      </div>
+
+      {/* 视频设置：横竖屏 & 时长 */}
+      <div className="space-y-2">
+        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block">
+          视频设置
+        </label>
+        <VideoSettingsPanel
+          aspectRatio={aspectRatio}
+          onAspectRatioChange={setAspectRatio}
+          duration={duration}
+          onDurationChange={setDuration}
+          modelType={selectedModelType}
+          disabled={isGenerating}
+        />
       </div>
       
       {/* Video Preview */}
@@ -77,7 +109,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
 
       {/* Generate Button */}
       <button
-        onClick={onGenerate}
+        onClick={handleGenerate}
         disabled={!hasStartFrame || isGenerating}
         className={`w-full py-3 rounded-lg font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${
           hasVideo 
@@ -88,7 +120,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
         {isGenerating ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            生成视频中...
+            生成视频中 ({aspectRatio}, {selectedModelType === 'sora' ? `${duration}秒` : 'Veo'})...
           </>
         ) : (
           <>{hasVideo ? '重新生成视频' : '开始生成视频'}</>

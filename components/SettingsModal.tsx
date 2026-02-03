@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Key, Loader2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { X, Key, Loader2, CheckCircle, AlertCircle, ExternalLink, Gift, Sparkles } from 'lucide-react';
 import { verifyApiKey } from '../services/geminiService';
+import { setGlobalApiKey, getGlobalApiKey } from '../services/modelRegistry';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -23,9 +24,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   // 初始化输入框
   useEffect(() => {
     if (isOpen) {
-      setInputKey(currentApiKey);
-      setVerifyStatus(currentApiKey ? 'success' : 'idle');
-      setVerifyMessage(currentApiKey ? 'API Key 已配置' : '');
+      const key = currentApiKey || getGlobalApiKey() || '';
+      setInputKey(key);
+      setVerifyStatus(key ? 'success' : 'idle');
+      setVerifyMessage(key ? 'API Key 已配置' : '');
     }
   }, [isOpen, currentApiKey]);
 
@@ -46,6 +48,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       if (result.success) {
         setVerifyStatus('success');
         setVerifyMessage('验证成功！API Key 已保存');
+        // 同时保存到 modelRegistry 和回调
+        setGlobalApiKey(inputKey.trim());
         onSaveApiKey(inputKey.trim());
       } else {
         setVerifyStatus('error');
@@ -63,6 +67,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     setInputKey('');
     setVerifyStatus('idle');
     setVerifyMessage('');
+    setGlobalApiKey('');
     onSaveApiKey('');
   };
 
@@ -88,8 +93,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               <Key className="w-5 h-5 text-indigo-400" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">系统设置</h2>
-              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">Settings</p>
+              <h2 className="text-lg font-bold text-white">API Key 配置</h2>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-mono">API KEY SETTINGS</p>
             </div>
           </div>
           <button
@@ -102,6 +107,44 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* 内容 */}
         <div className="p-6 space-y-6">
+          {/* 折扣广告卡片 */}
+          <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-500/30 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                <Gift className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+                  推荐使用 BigBanana API
+                </h3>
+                <p className="text-[10px] text-zinc-400 mb-2 leading-relaxed">
+                  支持 GPT-5.1、Gemini-3、Veo 3.1、Sora-2 等多种模型
+                </p>
+                <div className="flex items-center gap-2">
+                  <a 
+                    href="https://api.antsk.cn" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-white text-black text-[10px] font-bold rounded hover:bg-zinc-200 transition-colors inline-flex items-center gap-1"
+                  >
+                    立即购买
+                    <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                  <a 
+                    href="https://ocnf8yod3ljg.feishu.cn/wiki/MgFVw2EoQieTLKktaf2cHvu6nY3" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-zinc-800 text-zinc-300 text-[10px] font-bold rounded hover:bg-zinc-700 transition-colors inline-flex items-center gap-1"
+                  >
+                    使用教程
+                    <ExternalLink className="w-2.5 h-2.5" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* API Key 配置 */}
           <div>
             <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3">
@@ -133,37 +176,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 {verifyMessage}
               </div>
             )}
-
-            {/* 帮助文字 */}
-            <div className="mt-3 text-[10px] text-zinc-600 leading-relaxed space-y-1">
-              <p>
-                需要 BigBanana API 支持图片和视频生成功能。
-              </p>
-              <div className="flex items-center gap-3">
-                <a 
-                  href="https://api.antsk.cn" 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="text-indigo-400 hover:underline inline-flex items-center gap-1"
-                >
-                  立即购买 <ExternalLink className="w-2.5 h-2.5" />
-                </a>
-                <span className="text-zinc-700">|</span>
-                <a 
-                  href="https://ocnf8yod3ljg.feishu.cn/wiki/MgFVw2EoQieTLKktaf2cHvu6nY3" 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="text-indigo-400 hover:underline inline-flex items-center gap-1"
-                >
-                  使用教程 <ExternalLink className="w-2.5 h-2.5" />
-                </a>
-              </div>
-            </div>
           </div>
 
           {/* 操作按钮 */}
           <div className="flex gap-3">
-            {currentApiKey && (
+            {(currentApiKey || getGlobalApiKey()) && (
               <button
                 onClick={handleClearKey}
                 className="flex-1 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors rounded-lg border border-zinc-800"

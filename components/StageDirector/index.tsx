@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutGrid, Sparkles, Loader2, AlertCircle, Edit2, Film, Video as VideoIcon } from 'lucide-react';
-import { ProjectState, Shot, Keyframe } from '../../types';
+import { ProjectState, Shot, Keyframe, AspectRatio, VideoDuration } from '../../types';
 import { generateImage, generateVideo, generateActionSuggestion, optimizeKeyframePrompt, optimizeBothKeyframes, enhanceKeyframePrompt, splitShotIntoSubShots } from '../../services/geminiService';
 import { 
   getRefImagesForShot, 
@@ -194,14 +194,22 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
 
   /**
    * 生成视频
+   * @param shot - 镜头数据
+   * @param aspectRatio - 横竖屏比例
+   * @param duration - 视频时长（仅 Sora 有效）
    */
-  const handleGenerateVideo = async (shot: Shot) => {
+  const handleGenerateVideo = async (shot: Shot, aspectRatio: AspectRatio = '16:9', duration: VideoDuration = 8) => {
     const sKf = shot.keyframes?.find(k => k.type === 'start');
     const eKf = shot.keyframes?.find(k => k.type === 'end');
 
     if (!sKf?.imageUrl) return showAlert("请先生成起始帧！", { type: 'warning' });
 
-    const selectedModel = shot.videoModel || DEFAULTS.videoModel;
+    // 规范化模型名称：'veo_3_1_i2v_s_fast_fl_landscape' -> 'veo'
+    let selectedModel: string = shot.videoModel || DEFAULTS.videoModel;
+    if (selectedModel.startsWith('veo_3_1')) {
+      selectedModel = 'veo';
+    }
+    
     const projectLanguage = project.language || project.scriptData?.language || '中文';
     
     const videoPrompt = buildVideoPrompt(
@@ -219,7 +227,7 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
         id: intervalId,
         startKeyframeId: sKf.id,
         endKeyframeId: eKf?.id || '',
-        duration: 10,
+        duration: duration,
         motionStrength: 5,
         videoPrompt,
         status: 'generating'
@@ -231,7 +239,9 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
         videoPrompt, 
         sKf.imageUrl, 
         eKf?.imageUrl,
-        selectedModel
+        selectedModel,
+        aspectRatio,
+        duration
       );
 
       updateShot(shot.id, (s) => ({
@@ -758,8 +768,8 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
             onCopyNextStartFrame={handleCopyNextStartFrame}
             useAIEnhancement={useAIEnhancement}
             onToggleAIEnhancement={() => setUseAIEnhancement(!useAIEnhancement)}
-            onGenerateVideo={() => handleGenerateVideo(activeShot)}
-            onModelChange={(model) => updateShot(activeShot.id, s => ({ ...s, videoModel: model }))}
+            onGenerateVideo={(aspectRatio, duration) => handleGenerateVideo(activeShot, aspectRatio, duration)}
+            onModelChange={(model) => updateShot(activeShot.id, s => ({ ...s, videoModel: model as any }))}
             onEditVideoPrompt={() => {
               // 如果videoPrompt不存在，动态生成一个
               let promptValue = activeShot.interval?.videoPrompt;
