@@ -122,10 +122,12 @@ Scan the QR code to join our **BigBanana Product Experience Group** on WeChat. C
 For **quick one-off creative tasks**, try our online tool platform:
 
 **[BigBanana Creation Studio](https://bigbanana.tree456.com/)** offers:
-* 📷 **AI Image Generation**: Text-to-image with multiple styles
-* 📊 **AI PowerPoint**: Generate presentations instantly
-* 📱 **Social Media Content**: Viral titles and posts for Xiaohongshu
-* ✍️ **AI Writing**: Articles, scripts, marketing copy, and more
+* 📷 **[AI Image Generation](https://bigbanana.tree456.com/gemini-image.html)**: Text-to-image with multiple styles
+* 📊 **[AI PowerPoint](https://bigbanana.tree456.com/ppt-content.html)**: Generate presentations instantly
+* 🎬 **[AI Video](https://bigbanana.tree456.com/ai-video-content.html)**: Intelligent video content generation
+* 📱 **[Social Media Content](https://bigbanana.tree456.com/redink-content.html)**: Viral titles and posts for Xiaohongshu
+* 📖 **[AI Novel Creation](https://bigbanana.tree456.com/novel-creation.html)**: Intelligent novel generation and continuation
+* 🎨 **[AI Anime Generation](https://bigbanana.tree456.com/anime-content.html)**: Anime-style image creation
 * 🎭 **No Installation**: Use directly in browser, instant access
 
 **Best For**: Daily creation, rapid prototyping, idea validation  

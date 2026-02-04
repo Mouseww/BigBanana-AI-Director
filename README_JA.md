@@ -125,10 +125,12 @@ QRコードをスキャンして **BigBanana プロダクト体験グループ**
 **単発のクリエイティブタスク**を素早く完成させたい場合は、オンラインツールプラットフォームをお試しください：
 
 **[BigBanana クリエイションスタジオ](https://bigbanana.tree456.com/)** では以下を提供：
-* 📷 **AI 画像生成**：テキストから画像へ、複数のスタイルに対応
-* 📊 **AI パワーポイント**：プレゼンテーションを瞬時に生成
-* 📱 **SNS コンテンツ**：小紅書向けのバイラルタイトルと投稿
-* ✍️ **AI ライティング**：記事、脚本、マーケティングコピーなど
+* 📷 **[AI 画像生成](https://bigbanana.tree456.com/gemini-image.html)**：テキストから画像へ、複数のスタイルに対応
+* 📊 **[AI パワーポイント](https://bigbanana.tree456.com/ppt-content.html)**：プレゼンテーションを瞬時に生成
+* 🎬 **[AI ビデオ](https://bigbanana.tree456.com/ai-video-content.html)**：インテリジェントな動画コンテンツ生成
+* 📱 **[SNS コンテンツ](https://bigbanana.tree456.com/redink-content.html)**：小紅書向けのバイラルタイトルと投稿
+* 📖 **[AI 小説創作](https://bigbanana.tree456.com/novel-creation.html)**：インテリジェントな小説生成と続編作成
+* 🎨 **[AI アニメ生成](https://bigbanana.tree456.com/anime-content.html)**：アニメスタイルの画像作成
 * 🎭 **インストール不要**：ブラウザで直接使用、即座にアクセス
 
 **最適な用途**：日常的な創作、高速プロトタイピング、アイデア検証  
