@@ -85,7 +85,7 @@ const ScriptEditor: React.FC<Props> = ({
       
       {/* Editor Area */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto h-full flex flex-col py-12 px-8">
+        <div className="w-full max-w-5xl mx-auto h-full flex flex-col py-12 px-8">
           <textarea
             value={script}
             onChange={(e) => onChange(e.target.value)}
