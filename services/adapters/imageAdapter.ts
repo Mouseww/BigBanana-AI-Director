@@ -279,10 +279,19 @@ export const callImageApi = async (
   // 提取 base64 图片（inlineData 优先）
   const candidates = responseData.candidates || [];
   if (candidates.length > 0 && candidates[0].content && candidates[0].content.parts) {
+    let collectedText = '';
     for (const part of candidates[0].content.parts) {
       if (part.inlineData) {
         return `data:image/png;base64,${part.inlineData.data}`;
       }
+      if (typeof part.text === 'string') {
+        collectedText += part.text;
+      }
+    }
+
+    const imageUrl = extractMarkdownImageUrl(collectedText);
+    if (imageUrl) {
+      return convertImageUrlToBase64(imageUrl);
     }
   }
 

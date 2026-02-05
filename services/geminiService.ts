@@ -1067,10 +1067,21 @@ export const generateImage = async (
     // Extract base64 image (inlineData 优先)
     const candidates = responseData.candidates || [];
     if (candidates.length > 0 && candidates[0].content && candidates[0].content.parts) {
+      let collectedText = '';
       for (const part of candidates[0].content.parts) {
         if (part.inlineData) {
           result = `data:image/png;base64,${part.inlineData.data}`;
           break;
+        }
+        if (typeof part.text === 'string') {
+          collectedText += part.text;
+        }
+      }
+
+      if (!result) {
+        const imageUrl = extractMarkdownImageUrl(collectedText);
+        if (imageUrl) {
+          result = await convertImageUrlToBase64(imageUrl);
         }
       }
     }
