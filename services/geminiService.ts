@@ -1166,13 +1166,28 @@ const extractMarkdownImageUrl = (text: string): string | null => {
 /**
  * 下载图片URL并转为Base64 Data URL
  */
-const convertImageUrlToBase64 = async (url: string): Promise<string> => {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`图片下载失败: HTTP ${response.status}`);
+const fetchImageBlob = async (url: string): Promise<Blob> => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`图片下载失败: HTTP ${response.status}`);
+    }
+    return await response.blob();
+  } catch (error) {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      const proxyUrl = `${window.location.origin}/image-proxy?url=${encodeURIComponent(url)}`;
+      const proxyResponse = await fetch(proxyUrl);
+      if (!proxyResponse.ok) {
+        throw error;
+      }
+      return await proxyResponse.blob();
+    }
+    throw error;
   }
+};
 
-  const blob = await response.blob();
+const convertImageUrlToBase64 = async (url: string): Promise<string> => {
+  const blob = await fetchImageBlob(url);
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => resolve(reader.result as string);
