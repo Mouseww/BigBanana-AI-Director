@@ -8,6 +8,107 @@ import { getApiKeyForModel, getApiBaseUrlForModel, getActiveVideoModel } from '.
 import { ApiKeyError } from './chatAdapter';
 
 /**
+ * 从文本中提取首个视频URL
+ */
+const extractVideoUrlFromText = (text: string): string | null => {
+  const urlMatch = text.match(/https?:\/\/[^\s\])"]+\.mp4[^\s\])"']*/i) ||
+                   text.match(/https?:\/\/[^\s\])"]+/i);
+  return urlMatch ? urlMatch[0] : null;
+};
+
+/**
+ * 下载视频URL并转为Base64 Data URL
+ */
+const convertVideoUrlToBase64 = async (videoUrl: string): Promise<string> => {
+  const videoResponse = await fetch(videoUrl);
+  if (!videoResponse.ok) {
+    throw new Error(`视频下载失败: ${videoResponse.status}`);
+  }
+
+  const videoBlob = await videoResponse.blob();
+  const reader = new FileReader();
+  
+  return new Promise((resolve, reject) => {
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      if (result && result.startsWith('data:')) {
+        resolve(result);
+      } else {
+        reject(new Error('视频转换失败'));
+      }
+    };
+    reader.onerror = () => reject(new Error('视频读取失败'));
+    reader.readAsDataURL(videoBlob);
+  });
+};
+
+/**
+ * 解析SSE流式视频响应（等待STOP后判定）
+ */
+const parseSseVideoResponse = async (response: Response): Promise<string> => {
+  if (!response.body) {
+    throw new Error('视频生成失败：响应体为空');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let collectedText = '';
+  let stopReceived = false;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const chunks = buffer.split('\n\n');
+    buffer = chunks.pop() || '';
+
+    for (const chunk of chunks) {
+      const lines = chunk.split(/\r?\n/);
+      const dataLines = lines.filter(line => line.startsWith('data:'));
+      if (dataLines.length === 0) continue;
+
+      const data = dataLines.map(line => line.replace(/^data:\s?/, '')).join('\n').trim();
+      if (!data) continue;
+      if (data === '[DONE]') {
+        stopReceived = true;
+        continue;
+      }
+
+      try {
+        const payload = JSON.parse(data);
+        const candidates = payload.candidates || [];
+        for (const candidate of candidates) {
+          if (candidate.finishReason === 'STOP') {
+            stopReceived = true;
+          }
+          const parts = candidate.content?.parts || [];
+          for (const part of parts) {
+            if (typeof part.text === 'string') {
+              collectedText += part.text;
+            }
+          }
+        }
+      } catch {
+        // 忽略非JSON数据块
+      }
+    }
+  }
+
+  if (!stopReceived) {
+    // 未收到STOP但流已结束，按最终内容判定
+  }
+
+  const videoUrl = extractVideoUrlFromText(collectedText);
+  if (!videoUrl) {
+    throw new Error('视频生成失败：未能从SSE响应中提取视频 URL');
+  }
+
+  return convertVideoUrlToBase64(videoUrl);
+};
+
+/**
  * 重试操作
  */
 const retryOperation = async <T>(
@@ -143,7 +244,7 @@ const callVeoApi = async (
         body: JSON.stringify({
           model: modelName,
           messages,
-          stream: false,
+          stream: true,
           temperature: 0.7,
         }),
         signal: controller.signal,
@@ -173,40 +274,20 @@ const callVeoApi = async (
 
     clearTimeout(timeoutId);
 
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('text/event-stream')) {
+      return parseSseVideoResponse(response);
+    }
+
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
 
-    // 提取视频 URL
-    const urlMatch = content.match(/https?:\/\/[^\s\])"]+\.mp4[^\s\])"']*/i) ||
-                    content.match(/https?:\/\/[^\s\])"]+/i);
-    
-    if (!urlMatch) {
+    const videoUrl = extractVideoUrlFromText(content);
+    if (!videoUrl) {
       throw new Error('视频生成失败：未能从响应中提取视频 URL');
     }
 
-    const videoUrl = urlMatch[0];
-
-    // 下载并转换为 base64
-    const videoResponse = await fetch(videoUrl);
-    if (!videoResponse.ok) {
-      throw new Error(`视频下载失败: ${videoResponse.status}`);
-    }
-
-    const videoBlob = await videoResponse.blob();
-    const reader = new FileReader();
-    
-    return new Promise((resolve, reject) => {
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        if (result && result.startsWith('data:')) {
-          resolve(result);
-        } else {
-          reject(new Error('视频转换失败'));
-        }
-      };
-      reader.onerror = () => reject(new Error('视频读取失败'));
-      reader.readAsDataURL(videoBlob);
-    });
+    return convertVideoUrlToBase64(videoUrl);
   } catch (error: any) {
     clearTimeout(timeoutId);
     if (error.name === 'AbortError') {

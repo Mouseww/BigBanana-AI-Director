@@ -17,11 +17,14 @@ import {
 // localStorage 键名
 const STORAGE_KEY = 'bigbanana_model_config';
 
-// 默认提供商 - api.antsk.cn
+// 默认提供商 - 支持从 .env 配置 ANTSK_API_BASE_URL
+const DEFAULT_ANTSK_BASE_URL = (process.env.ANTSK_API_BASE_URL || 'https://api.antsk.cn');
+
+// 默认提供商
 const DEFAULT_PROVIDER: ModelProvider = {
   id: 'antsk',
   name: 'BigBanana API (api.antsk.cn)',
-  baseUrl: 'https://api.antsk.cn',
+  baseUrl: DEFAULT_ANTSK_BASE_URL,
   isDefault: true,
   isBuiltIn: true
 };
