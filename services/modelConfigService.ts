@@ -76,6 +76,11 @@ export const loadModelConfig = (): ModelManagerState => {
       const hasDefaultProvider = parsed.providers.some(p => p.id === 'antsk');
       if (!hasDefaultProvider) {
         parsed.providers.unshift(DEFAULT_PROVIDER);
+      } else if (process.env.ANTSK_API_BASE_URL) {
+        // 全局配置覆盖默认提供商 baseUrl
+        parsed.providers = parsed.providers.map(p =>
+          p.id === 'antsk' ? { ...p, baseUrl: DEFAULT_ANTSK_BASE_URL } : p
+        );
       }
       // 迁移旧的 Veo 模型名为统一的 veo
       const videoModelName = parsed.currentConfig?.videoModel?.modelName || '';

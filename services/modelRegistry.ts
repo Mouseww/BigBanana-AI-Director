@@ -22,6 +22,7 @@ import {
 // localStorage 键名
 const STORAGE_KEY = 'bigbanana_model_registry';
 const API_KEY_STORAGE_KEY = 'antsk_api_key';
+const API_BASE_URL_STORAGE_KEY = 'antsk_api_base_url';
 
 // 运行时状态缓存
 let registryState: ModelRegistryState | null = null;
@@ -38,6 +39,7 @@ const getDefaultState = (): ModelRegistryState => ({
   models: [...ALL_BUILTIN_MODELS],
   activeModels: { ...DEFAULT_ACTIVE_MODELS },
   globalApiKey: localStorage.getItem(API_KEY_STORAGE_KEY) || undefined,
+  globalApiBaseUrl: localStorage.getItem(API_BASE_URL_STORAGE_KEY) || undefined,
 });
 
 /**
@@ -69,6 +71,11 @@ export const loadRegistry = (): ModelRegistryState => {
       BUILTIN_PROVIDERS.forEach(bp => {
         if (!existingProviderIds.includes(bp.id)) {
           parsed.providers.unshift(bp);
+        } else if (bp.id === 'antsk' && process.env.ANTSK_API_BASE_URL) {
+          // 全局配置覆盖内置提供商 baseUrl
+          parsed.providers = parsed.providers.map(p =>
+            p.id === 'antsk' ? { ...p, baseUrl: bp.baseUrl } : p
+          );
         }
       });
       
@@ -102,8 +109,9 @@ export const loadRegistry = (): ModelRegistryState => {
         parsed.activeModels.video = 'veo';
       }
       
-      // 同步全局 API Key
+      // 同步全局 API Key / Base URL
       parsed.globalApiKey = localStorage.getItem(API_KEY_STORAGE_KEY) || parsed.globalApiKey;
+      parsed.globalApiBaseUrl = localStorage.getItem(API_BASE_URL_STORAGE_KEY) || parsed.globalApiBaseUrl;
       
       registryState = parsed;
       return parsed;
@@ -408,6 +416,27 @@ export const setGlobalApiKey = (apiKey: string): void => {
 };
 
 /**
+ * 获取全局 API Base URL
+ */
+export const getGlobalApiBaseUrl = (): string | undefined => {
+  return loadRegistry().globalApiBaseUrl || localStorage.getItem(API_BASE_URL_STORAGE_KEY) || undefined;
+};
+
+/**
+ * 设置全局 API Base URL
+ */
+export const setGlobalApiBaseUrl = (baseUrl: string): void => {
+  const state = loadRegistry();
+  state.globalApiBaseUrl = baseUrl;
+  if (baseUrl) {
+    localStorage.setItem(API_BASE_URL_STORAGE_KEY, baseUrl);
+  } else {
+    localStorage.removeItem(API_BASE_URL_STORAGE_KEY);
+  }
+  saveRegistry(state);
+};
+
+/**
  * 获取模型对应的 API Key
  * 优先级：模型专属 Key > 提供商 Key > 全局 Key
  */
@@ -434,6 +463,11 @@ export const getApiKeyForModel = (modelId: string): string | undefined => {
  * 获取模型对应的 API 基础 URL
  */
 export const getApiBaseUrlForModel = (modelId: string): string => {
+  const globalBaseUrl = getGlobalApiBaseUrl();
+  if (globalBaseUrl) {
+    return globalBaseUrl.replace(/\/+$/, '');
+  }
+
   const model = getModelById(modelId);
   if (!model) return BUILTIN_PROVIDERS[0].baseUrl.replace(/\/+$/, '');
   
