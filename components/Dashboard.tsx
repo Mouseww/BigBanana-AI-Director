@@ -24,6 +24,7 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
   const [isLibraryLoading, setIsLibraryLoading] = useState(true);
   const [libraryQuery, setLibraryQuery] = useState('');
   const [libraryFilter, setLibraryFilter] = useState<'all' | 'character' | 'scene'>('all');
+  const [libraryProjectFilter, setLibraryProjectFilter] = useState('all');
   const [assetToUse, setAssetToUse] = useState<AssetLibraryItem | null>(null);
   const [showLibraryModal, setShowLibraryModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -136,8 +137,18 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
     return new Date(ts).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
 
+  const projectNameOptions = Array.from(
+    new Set(
+      libraryItems.map((item) => (item.projectName && item.projectName.trim()) || '未知项目')
+    )
+  ).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+
   const filteredLibraryItems = libraryItems.filter((item) => {
     if (libraryFilter !== 'all' && item.type !== libraryFilter) return false;
+    if (libraryProjectFilter !== 'all') {
+      const projectName = (item.projectName && item.projectName.trim()) || '未知项目';
+      if (projectName !== libraryProjectFilter) return false;
+    }
     if (!libraryQuery.trim()) return true;
     const query = libraryQuery.trim().toLowerCase();
     return item.name.toLowerCase().includes(query);
@@ -521,6 +532,20 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
                   className="w-full pl-9 pr-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--border-secondary)]"
                 />
               </div>
+              <div className="min-w-[180px]">
+                <select
+                  value={libraryProjectFilter}
+                  onChange={(e) => setLibraryProjectFilter(e.target.value)}
+                  className="w-full px-3 py-2 bg-[var(--bg-primary)] border border-[var(--border-primary)] rounded text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-secondary)]"
+                >
+                  <option value="all">全部项目</option>
+                  {projectNameOptions.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="flex gap-2">
                 {(['all', 'character', 'scene'] as const).map((type) => (
                   <button
@@ -576,6 +601,9 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
                           <div className="text-sm text-[var(--text-primary)] font-bold line-clamp-1">{item.name}</div>
                           <div className="text-[10px] text-[var(--text-tertiary)] font-mono uppercase tracking-widest mt-1">
                             {item.type === 'character' ? '角色' : '场景'}
+                          </div>
+                          <div className="text-[10px] text-[var(--text-muted)] font-mono mt-1 line-clamp-1">
+                            {(item.projectName && item.projectName.trim()) || '未知项目'}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">

@@ -38,6 +38,8 @@ export interface AssetLibraryItem {
   id: string;
   type: AssetLibraryItemType;
   name: string;
+  projectId?: string;
+  projectName?: string;
   createdAt: number;
   updatedAt: number;
   data: Character | Scene;

@@ -40,6 +40,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryQuery, setLibraryQuery] = useState('');
   const [libraryFilter, setLibraryFilter] = useState<'all' | 'character' | 'scene'>('all');
+  const [libraryProjectFilter, setLibraryProjectFilter] = useState('all');
   const [replaceTargetCharId, setReplaceTargetCharId] = useState<string | null>(null);
   
   // 横竖屏选择状态
@@ -319,7 +320,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
   const handleAddCharacterToLibrary = (char: Character) => {
     const saveItem = async () => {
       try {
-        const item = createLibraryItemFromCharacter(char);
+        const item = createLibraryItemFromCharacter(char, project);
         await saveAssetToLibrary(item);
         showAlert(`已加入资产库：${char.name}`, { type: 'success' });
         refreshLibrary();
@@ -343,7 +344,7 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
   const handleAddSceneToLibrary = (scene: Scene) => {
     const saveItem = async () => {
       try {
-        const item = createLibraryItemFromScene(scene);
+        const item = createLibraryItemFromScene(scene, project);
         await saveAssetToLibrary(item);
         showAlert(`已加入资产库：${scene.location}`, { type: 'success' });
         refreshLibrary();
@@ -691,8 +692,17 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
   const allCharactersReady = project.scriptData.characters.every(c => c.referenceImage);
   const allScenesReady = project.scriptData.scenes.every(s => s.referenceImage);
   const selectedChar = project.scriptData.characters.find(c => compareIds(c.id, selectedCharId));
+  const projectNameOptions = Array.from(
+    new Set(
+      libraryItems.map((item) => (item.projectName && item.projectName.trim()) || '未知项目')
+    )
+  ).sort((a, b) => a.localeCompare(b, 'zh-CN'));
   const filteredLibraryItems = libraryItems.filter((item) => {
     if (libraryFilter !== 'all' && item.type !== libraryFilter) return false;
+    if (libraryProjectFilter !== 'all') {
+      const projectName = (item.projectName && item.projectName.trim()) || '未知项目';
+      if (projectName !== libraryProjectFilter) return false;
+    }
     if (!libraryQuery.trim()) return true;
     const query = libraryQuery.trim().toLowerCase();
     return item.name.toLowerCase().includes(query);
@@ -776,6 +786,20 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
                     className="w-full pl-9 pr-3 py-2 bg-[var(--bg-deep)] border border-[var(--border-primary)] rounded text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--border-secondary)]"
                   />
                 </div>
+                <div className="min-w-[180px]">
+                  <select
+                    value={libraryProjectFilter}
+                    onChange={(e) => setLibraryProjectFilter(e.target.value)}
+                    className="w-full px-3 py-2 bg-[var(--bg-deep)] border border-[var(--border-primary)] rounded text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-secondary)]"
+                  >
+                    <option value="all">全部项目</option>
+                    {projectNameOptions.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="flex gap-2">
                   {(['all', 'character', 'scene'] as const).map((type) => (
                     <button
@@ -831,6 +855,9 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
                             <div className="text-sm text-[var(--text-primary)] font-bold line-clamp-1">{item.name}</div>
                             <div className="text-[10px] text-[var(--text-tertiary)] font-mono uppercase tracking-widest mt-1">
                               {item.type === 'character' ? '角色' : '场景'}
+                            </div>
+                            <div className="text-[10px] text-[var(--text-muted)] font-mono mt-1 line-clamp-1">
+                              {(item.projectName && item.projectName.trim()) || '未知项目'}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">

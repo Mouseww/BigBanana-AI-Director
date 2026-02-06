@@ -11,12 +11,17 @@ const cloneCharacterVariation = (variation: Character['variations'][number]) => 
   status: variation.referenceImage ? 'completed' : 'pending'
 });
 
-export const createLibraryItemFromCharacter = (character: Character): AssetLibraryItem => {
+export const createLibraryItemFromCharacter = (
+  character: Character,
+  project?: Pick<ProjectState, 'id' | 'title'>
+): AssetLibraryItem => {
   const now = Date.now();
   return {
     id: generateId('asset'),
     type: 'character',
     name: character.name,
+    projectId: project?.id,
+    projectName: project?.title,
     createdAt: now,
     updatedAt: now,
     data: {
@@ -26,12 +31,17 @@ export const createLibraryItemFromCharacter = (character: Character): AssetLibra
   };
 };
 
-export const createLibraryItemFromScene = (scene: Scene): AssetLibraryItem => {
+export const createLibraryItemFromScene = (
+  scene: Scene,
+  project?: Pick<ProjectState, 'id' | 'title'>
+): AssetLibraryItem => {
   const now = Date.now();
   return {
     id: generateId('asset'),
     type: 'scene',
     name: scene.location,
+    projectId: project?.id,
+    projectName: project?.title,
     createdAt: now,
     updatedAt: now,
     data: { ...scene }
