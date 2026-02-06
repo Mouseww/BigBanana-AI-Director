@@ -10,10 +10,10 @@ export const STYLES = {
   button: {
     edit: 'text-xs text-[var(--accent-text)] hover:text-[var(--accent-text-hover)] px-3 py-1 border border-[var(--accent-border)] rounded hover:bg-[var(--accent-bg)] transition-colors',
     editSmall: 'text-xs text-[var(--accent-text)] hover:text-[var(--accent-text-hover)] px-2 py-0.5 border border-[var(--accent-border)] rounded hover:bg-[var(--accent-bg)] transition-colors',
-    editVideo: 'text-xs text-[var(--tag-purple)] hover:text-[var(--tag-purple)] px-2 py-0.5 border border-[var(--tag-purple-border)] rounded hover:bg-[var(--tag-purple-hover)] transition-colors',
+    editVideo: 'text-xs text-[var(--accent-text)] hover:text-[var(--accent-text-hover)] px-2 py-0.5 border border-[var(--accent-border)] rounded hover:bg-[var(--accent-bg)] transition-colors',
     save: 'flex items-center gap-1 px-3 py-1.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] text-xs rounded transition-colors',
     saveSmall: 'flex items-center gap-1 px-2 py-1 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--text-primary)] text-xs rounded transition-colors',
-    saveVideo: 'flex items-center gap-1 px-2 py-1 bg-[var(--tag-purple)] hover:bg-[var(--tag-purple)] text-[var(--text-primary)] text-xs rounded transition-colors',
+    saveVideo: 'flex items-center gap-1 px-2 py-1 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--accent-on)] text-xs rounded transition-colors',
     cancel: 'flex items-center gap-1 px-3 py-1.5 bg-[var(--border-secondary)] hover:bg-[var(--border-primary)] text-[var(--text-primary)] text-xs rounded transition-colors',
     cancelSmall: 'flex items-center gap-1 px-2 py-1 bg-[var(--border-secondary)] hover:bg-[var(--border-primary)] text-[var(--text-primary)] text-xs rounded transition-colors'
   },
@@ -31,7 +31,7 @@ export const STYLES = {
     shotNumber: 'text-xs font-bold text-[var(--accent-text)] bg-[var(--accent-bg)] px-2 py-0.5 rounded',
     keyframeStart: 'text-xs font-medium px-2 py-0.5 rounded bg-[var(--success-bg)] text-[var(--success-text)] border border-[var(--success-border)]',
     keyframeEnd: 'text-xs font-medium px-2 py-0.5 rounded bg-[var(--info-bg)] text-[var(--info-text)] border border-[var(--info-border)]',
-    videoPrompt: 'text-xs font-medium px-2 py-0.5 rounded bg-[var(--tag-purple-bg)] text-[var(--tag-purple)] border border-[var(--tag-purple-border)]'
+    videoPrompt: 'text-xs font-medium px-2 py-0.5 rounded bg-[var(--accent-bg)] text-[var(--accent-text)] border border-[var(--accent-border)]'
   }
 };
 

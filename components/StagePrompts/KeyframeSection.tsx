@@ -114,7 +114,7 @@ const KeyframeSection: React.FC<Props> = ({
               {/* Video Prompt Section */}
               {shot.interval && (
                 <div className="mt-3 pt-3 border-t border-[var(--border-subtle)]">
-                  <div className="bg-[var(--tag-purple-bg)] border border-[var(--tag-purple-border)] rounded p-3">
+                  <div className="bg-[var(--accent-bg)] border border-[var(--accent-border)] rounded p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className={STYLES.badge.videoPrompt}>
