@@ -278,15 +278,17 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
   const handleUploadCharacterImage = async (charId: string, file: File) => {
     try {
       const base64 = await handleImageUpload(file);
-      
-      if (project.scriptData) {
-        const newData = { ...project.scriptData };
+
+      updateProject((prev) => {
+        if (!prev.scriptData) return prev;
+        const newData = { ...prev.scriptData };
         const char = newData.characters.find(c => compareIds(c.id, charId));
         if (char) {
           char.referenceImage = base64;
+          char.status = 'completed';
         }
-        updateProject({ scriptData: newData });
-      }
+        return { ...prev, scriptData: newData };
+      });
     } catch (e: any) {
       showAlert(e.message, { type: 'error' });
     }
@@ -298,15 +300,17 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
   const handleUploadSceneImage = async (sceneId: string, file: File) => {
     try {
       const base64 = await handleImageUpload(file);
-      
-      if (project.scriptData) {
-        const newData = { ...project.scriptData };
+
+      updateProject((prev) => {
+        if (!prev.scriptData) return prev;
+        const newData = { ...prev.scriptData };
         const scene = newData.scenes.find(s => compareIds(s.id, sceneId));
         if (scene) {
           scene.referenceImage = base64;
+          scene.status = 'completed';
         }
-        updateProject({ scriptData: newData });
-      }
+        return { ...prev, scriptData: newData };
+      });
     } catch (e: any) {
       showAlert(e.message, { type: 'error' });
     }
@@ -658,16 +662,18 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
   const handleUploadVariationImage = async (charId: string, varId: string, file: File) => {
     try {
       const base64 = await handleImageUpload(file);
-      
-      if (project.scriptData) {
-        const newData = { ...project.scriptData };
+
+      updateProject((prev) => {
+        if (!prev.scriptData) return prev;
+        const newData = { ...prev.scriptData };
         const char = newData.characters.find(c => compareIds(c.id, charId));
         const variation = char?.variations?.find(v => compareIds(v.id, varId));
         if (variation) {
           variation.referenceImage = base64;
+          variation.status = 'completed';
         }
-        updateProject({ scriptData: newData });
-      }
+        return { ...prev, scriptData: newData };
+      });
     } catch (e: any) {
       showAlert(e.message, { type: 'error' });
     }
