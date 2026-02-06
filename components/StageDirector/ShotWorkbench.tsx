@@ -101,7 +101,7 @@ const ShotWorkbench: React.FC<ShotWorkbenchProps> = ({
       {/* Header */}
       <div className="h-16 px-6 border-b border-[var(--border-primary)] flex items-center justify-between bg-[var(--bg-surface)] shrink-0">
         <div className="flex items-center gap-3">
-          <span className="w-8 h-8 bg-[var(--accent-bg)] text-[var(--accent-text)] rounded-lg flex items-center justify-center font-bold font-mono text-sm border border-[var(--accent-border)]">
+          <span className="min-w-[3rem] h-8 px-2 bg-[var(--accent-bg)] text-[var(--accent-text)] rounded-lg flex items-center justify-center font-bold font-mono text-[11px] whitespace-nowrap border border-[var(--accent-border)]">
             {getShotDisplayNumber()}
           </span>
           <div>
