@@ -225,36 +225,22 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
     
     // 使用传入的 modelId 或默认模型
     let selectedModel: string = modelId || shot.videoModel || DEFAULTS.videoModel;
-    // 规范化模型名称：'veo_3_1_i2v_s_fast_fl_landscape' -> 'veo'
-    if (selectedModel.startsWith('veo_3_1')) {
+    // 规范化模型名称：旧模型名 -> 'veo'
+    if (selectedModel.startsWith('veo_3_1') || selectedModel === 'veo-r2v' || selectedModel.startsWith('veo_3_0_r2v')) {
       selectedModel = 'veo';
     }
     
-    // 判断是否为多图模式
-    const isR2vMode = selectedModel === 'veo-r2v';
-    
-    // 非多图模式下必须有起始帧
-    if (!isR2vMode && !sKf?.imageUrl) {
+    // 必须有起始帧
+    if (!sKf?.imageUrl) {
       return showAlert("请先生成起始帧！", { type: 'warning' });
-    }
-    
-    // 多图模式下收集参考图（角色+场景），不自动带入九宫格图片
-    let referenceImages: string[] | undefined;
-    if (isR2vMode) {
-      referenceImages = getRefImagesForShot(shot, project.scriptData);
-      console.log(`📸 多图模式：收集到 ${referenceImages.length} 张参考图`);
     }
     
     const projectLanguage = project.language || project.scriptData?.language || '中文';
     
-    // 检测是否为九宫格分镜模式
-    // - 首尾帧模式（sora-2/veo）：首帧图片就是九宫格整图时触发
-    // - 多图模式（veo-r2v）：只要有已完成的九宫格数据就触发（九宫格图会作为参考图之一传入）
-    const isNineGridMode = isR2vMode
-      ? (shot.nineGrid?.status === 'completed' && shot.nineGrid?.panels?.length > 0)
-      : (shot.nineGrid?.status === 'completed' 
-          && shot.nineGrid?.imageUrl 
-          && sKf?.imageUrl === shot.nineGrid.imageUrl);
+    // 检测是否为九宫格分镜模式：首帧图片就是九宫格整图时触发
+    const isNineGridMode = (shot.nineGrid?.status === 'completed' 
+        && shot.nineGrid?.imageUrl 
+        && sKf?.imageUrl === shot.nineGrid.imageUrl);
     
     const videoPrompt = buildVideoPrompt(
       shot.actionSummary,
@@ -285,12 +271,11 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
     try {
       const videoUrl = await generateVideo(
         videoPrompt, 
-        isR2vMode ? undefined : sKf?.imageUrl,   // 多图模式不传首帧
-        isR2vMode ? undefined : eKf?.imageUrl,    // 多图模式不传尾帧
+        sKf?.imageUrl,
+        eKf?.imageUrl,
         selectedModel,
         aspectRatio,
-        duration,
-        isR2vMode ? referenceImages : undefined   // 多图模式传参考图
+        duration
       );
 
       updateShot(shot.id, (s) => ({
@@ -996,13 +981,10 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
                 const selectedModel = activeShot.videoModel || DEFAULTS.videoModel;
                 const projectLanguage = project.language || project.scriptData?.language || '中文';
                 const startKf = activeShot.keyframes?.find(k => k.type === 'start');
-                const isR2v = selectedModel === 'veo-r2v';
-                // 多图模式：有九宫格数据即触发；首尾帧模式：首帧等于九宫格图时触发
-                const isNineGridMode = isR2v
-                  ? (activeShot.nineGrid?.status === 'completed' && (activeShot.nineGrid?.panels?.length ?? 0) > 0)
-                  : (activeShot.nineGrid?.status === 'completed'
-                      && activeShot.nineGrid?.imageUrl
-                      && startKf?.imageUrl === activeShot.nineGrid.imageUrl);
+                // 首帧等于九宫格图时触发九宫格分镜模式
+                const isNineGridMode = (activeShot.nineGrid?.status === 'completed'
+                    && activeShot.nineGrid?.imageUrl
+                    && startKf?.imageUrl === activeShot.nineGrid.imageUrl);
                 promptValue = buildVideoPrompt(
                   activeShot.actionSummary,
                   activeShot.cameraMovement,
@@ -1017,7 +999,6 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
               });
             }}
             onImageClick={(url, title) => setPreviewImage({ url, title })}
-            referenceImageCount={getRefImagesForShot(activeShot, project.scriptData).length}
             onGenerateNineGrid={() => handleGenerateNineGrid(activeShot)}
             nineGrid={activeShot.nineGrid}
             onSelectNineGridPanel={handleSelectNineGridPanel}

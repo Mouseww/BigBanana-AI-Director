@@ -116,6 +116,14 @@ export const importIndexedDBData = async (
     let assetsWritten = 0;
 
     payload.stores.projects.forEach(project => {
+      // Migration: veo-r2v 模型已下线，迁移为 veo
+      if (project.shots) {
+        project.shots.forEach((shot: any) => {
+          if (shot.videoModel === 'veo-r2v') {
+            shot.videoModel = 'veo';
+          }
+        });
+      }
       const request = projectStore.put(project);
       request.onsuccess = () => {
         projectsWritten += 1;
@@ -160,6 +168,14 @@ export const loadProjectFromDB = async (id: string): Promise<ProjectState> => {
         // Migration: ensure renderLogs exists for old projects
         if (!project.renderLogs) {
           project.renderLogs = [];
+        }
+        // Migration: veo-r2v 模型已下线，迁移为 veo
+        if (project.shots) {
+          project.shots.forEach((shot: any) => {
+            if (shot.videoModel === 'veo-r2v') {
+              shot.videoModel = 'veo';
+            }
+          });
         }
         resolve(project);
       }

@@ -57,6 +57,9 @@ export const loadRegistry = (): ModelRegistryState => {
       const parsed = JSON.parse(stored) as ModelRegistryState;
       const deprecatedVideoModelIds = [
         'veo-3.1',
+        'veo-r2v',
+        'veo_3_0_r2v_fast_portrait',
+        'veo_3_0_r2v_fast_landscape',
         'veo_3_1_t2v_fast_landscape',
         'veo_3_1_t2v_fast_portrait',
         'veo_3_1_i2v_s_fast_fl_landscape',

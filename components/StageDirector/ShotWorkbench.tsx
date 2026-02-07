@@ -37,8 +37,6 @@ interface ShotWorkbenchProps {
   onEditVideoPrompt: () => void;
   onVideoModelChange: (modelId: string) => void;
   onImageClick: (url: string, title: string) => void;
-  /** 参考图数量（角色+场景），用于多图模式提示 */
-  referenceImageCount?: number;
   // 九宫格分镜预览（高级功能）
   onGenerateNineGrid: () => void;
   nineGrid?: NineGridData;
@@ -78,7 +76,6 @@ const ShotWorkbench: React.FC<ShotWorkbenchProps> = ({
   onEditVideoPrompt,
   onVideoModelChange,
   onImageClick,
-  referenceImageCount = 0,
   onGenerateNineGrid,
   nineGrid,
   onSelectNineGridPanel,
@@ -307,7 +304,6 @@ const ShotWorkbench: React.FC<ShotWorkbenchProps> = ({
           shot={shot}
           hasStartFrame={!!startKf?.imageUrl}
           hasEndFrame={!!endKf?.imageUrl}
-          referenceImageCount={referenceImageCount}
           onGenerate={onGenerateVideo}
           onEditPrompt={onEditVideoPrompt}
           onModelChange={onVideoModelChange}

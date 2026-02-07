@@ -223,17 +223,6 @@ export const DEFAULT_VIDEO_PARAMS_VEO: VideoModelParams = {
 };
 
 /**
- * 默认视频模型参数 (Veo R2V 多图模式)
- */
-export const DEFAULT_VIDEO_PARAMS_VEO_R2V: VideoModelParams = {
-  mode: 'sync',
-  defaultAspectRatio: '16:9',
-  supportedAspectRatios: ['16:9', '9:16'],
-  defaultDuration: 8,
-  supportedDurations: [8],
-};
-
-/**
  * 默认视频模型参数 (Sora)
  */
 export const DEFAULT_VIDEO_PARAMS_SORA: VideoModelParams = {
@@ -325,17 +314,6 @@ export const BUILTIN_VIDEO_MODELS: VideoModelDefinition[] = [
     isBuiltIn: true,
     isEnabled: true,
     params: { ...DEFAULT_VIDEO_PARAMS_VEO },
-  },
-  {
-    id: 'veo-r2v',
-    name: 'Veo 3.0 多图模式',
-    type: 'video',
-    providerId: 'antsk',
-    endpoint: '/v1/chat/completions',
-    description: 'Veo 3.0 多图生成视频，可传入1张或多张参考图（角色+场景），无需首尾帧',
-    isBuiltIn: true,
-    isEnabled: true,
-    params: { ...DEFAULT_VIDEO_PARAMS_VEO_R2V },
   },
   {
     id: 'sora-2',

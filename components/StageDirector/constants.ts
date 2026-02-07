@@ -104,41 +104,6 @@ Technical Requirements:
 - Language: Use {language} for voiceover and subtitles`
   },
 
-  // 九宫格分镜模式的视频提示词（Veo R2V 多图模式专用）
-  veoNineGrid: {
-    chinese: `参考图片描述了同一场景的9个不同镜头视角（3x3九宫格分镜板），仅作为镜头规划参考。请勿在视频中展示分镜板图片本身。
-视频必须直接从面板1描述的镜头画面开始（全屏呈现），然后根据镜头规划依次切换视角，生成一段连贯的视频。
-
-动作描述：{actionSummary}
-
-九宫格各面板镜头规划：
-{panelDescriptions}
-
-技术要求：
-- 最关键：视频第一帧就必须是面板1所描述的镜头画面，绝对不要在视频开头或任何时刻展示九宫格分镜板原图！参考图仅用于理解镜头规划
-- 按面板1→9的顺序依次切换不同的镜头视角，形成流畅的蒙太奇剪辑效果
-- 镜头切换：每个面板视角停留约{secondsPerPanel}秒，通过自然的镜头运动过渡到下一个视角
-- 整体镜头运动：{cameraMovement}
-- 角色一致性：全程保持角色外观完全一致
-- 配音语言：使用中文配音`,
-
-    english: `The reference images depict 9 different camera angles of the same scene (3x3 storyboard grid). They are ONLY for shot planning reference — do NOT display the storyboard grid in the video.
-The video MUST begin directly with the full-screen shot described in Panel 1, then transition through each panel's camera angle in order.
-
-Action Description: {actionSummary}
-
-Storyboard Panel Breakdown:
-{panelDescriptions}
-
-Technical Requirements:
-- MOST CRITICAL: The very first frame MUST be the full-screen shot from Panel 1. NEVER show the nine-grid storyboard image at any point in the video! The reference images are ONLY for understanding the shot plan
-- Transition through the camera angles of panels 1→9 sequentially, creating a smooth montage-style edit
-- Shot Pacing: Each panel's angle should last approximately {secondsPerPanel} seconds, with natural camera movements transitioning to the next angle
-- Overall Camera Movement: {cameraMovement}
-- Character Consistency: Maintain identical character appearance throughout
-- Language: Use {language} for voiceover and subtitles`
-  },
-
   veo: {
     simple: `{actionSummary}
 

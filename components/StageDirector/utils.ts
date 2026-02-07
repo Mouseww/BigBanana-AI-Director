@@ -139,8 +139,8 @@ export const buildVideoPrompt = (
 ): string => {
   const isChinese = language === '中文' || language === 'Chinese';
   
-  // 九宫格分镜模式：有九宫格数据时，使用对应模型的专用提示词
-  if (nineGrid && nineGrid.panels.length > 0 && (videoModel === 'sora-2' || videoModel === 'veo-r2v')) {
+  // 九宫格分镜模式：有九宫格数据时，使用 sora-2 专用提示词
+  if (nineGrid && nineGrid.panels.length > 0 && videoModel === 'sora-2') {
     const panelDescriptions = nineGrid.panels.map((p, idx) => 
       `  面板${idx + 1} [${NINE_GRID.positionLabels[idx]}]: ${p.shotSize}/${p.cameraAngle} - ${p.description}`
     ).join('\n');
@@ -148,10 +148,7 @@ export const buildVideoPrompt = (
     const totalDuration = videoDuration || 8;
     const secondsPerPanel = Math.max(0.5, Math.round((totalDuration / 9) * 10) / 10);
     
-    // sora-2 和 veo-r2v 各用自己的九宫格模板
-    const templateGroup = videoModel === 'sora-2' 
-      ? VIDEO_PROMPT_TEMPLATES.sora2NineGrid
-      : VIDEO_PROMPT_TEMPLATES.veoNineGrid;
+    const templateGroup = VIDEO_PROMPT_TEMPLATES.sora2NineGrid;
     
     const template = isChinese ? templateGroup.chinese : templateGroup.english;
     

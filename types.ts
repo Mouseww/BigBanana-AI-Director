@@ -95,7 +95,7 @@ export interface Shot {
   characterVariations?: { [characterId: string]: string }; // Added: Map char ID to variation ID for this shot
   keyframes: Keyframe[];
   interval?: VideoInterval;
-  videoModel?: 'veo' | 'veo-r2v' | 'sora-2' | 'veo_3_1_t2v_fast_landscape' | 'veo_3_1_t2v_fast_portrait' | 'veo_3_1_i2v_s_fast_fl_landscape' | 'veo_3_1_i2v_s_fast_fl_portrait'; // Video generation model selection
+  videoModel?: 'veo' | 'sora-2' | 'veo_3_1_t2v_fast_landscape' | 'veo_3_1_t2v_fast_portrait' | 'veo_3_1_i2v_s_fast_fl_landscape' | 'veo_3_1_i2v_s_fast_fl_portrait'; // Video generation model selection
   nineGrid?: NineGridData; // 可选的九宫格分镜预览数据（高级功能）
 }
 

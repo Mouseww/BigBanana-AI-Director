@@ -131,15 +131,9 @@ const getActiveChatModelName = (): string => {
 
 /**
  * 获取 Veo 模型名称（根据横竖屏和是否有参考图）
- * @param modelId - 模型 ID：'veo' = 首尾帧模式，'veo-r2v' = 多图模式
  */
-const getVeoModelName = (hasReferenceImage: boolean, aspectRatio: AspectRatio, modelId: string = 'veo'): string => {
+const getVeoModelName = (hasReferenceImage: boolean, aspectRatio: AspectRatio): string => {
   const orientation = aspectRatio === '9:16' ? 'portrait' : 'landscape';
-  
-  // Veo 3.0 多图模式 (r2v)
-  if (modelId === 'veo-r2v') {
-    return `veo_3_0_r2v_fast_${orientation}`;
-  }
   
   // Veo 3.1 首尾帧模式
   if (hasReferenceImage) {
@@ -1451,10 +1445,9 @@ const generateVideoWithSora2 = async (
  * @param prompt - 视频生成提示词
  * @param startImageBase64 - 起始关键帧图像(base64格式)
  * @param endImageBase64 - 结束关键帧图像(base64格式)
- * @param model - 使用的视频生成模型，'veo' = 首尾帧模式，'veo-r2v' = 多图模式，'sora-2' = 异步API
+ * @param model - 使用的视频生成模型，'veo' = 首尾帧模式，'sora-2' = 异步API
  * @param aspectRatio - 横竖屏比例，支持 '16:9'（横屏，默认）、'9:16'（竖屏）、'1:1'（方形，仅 sora-2 支持）
  * @param duration - 视频时长（仅 sora-2 支持），支持 4、8、12 秒
- * @param referenceImages - 多图模式下的参考图片列表(base64格式)，用于 veo-r2v
  * @returns 返回生成的视频base64编码(而非URL),用于存储到indexedDB
  * @throws 如果视频生成失败则抛出错误
  * @note 视频URL会过期,因此转换为base64存储
@@ -1466,8 +1459,7 @@ export const generateVideo = async (
   endImageBase64?: string, 
   model: string = 'veo',
   aspectRatio: AspectRatio = '16:9',
-  duration: VideoDuration = 8,
-  referenceImages?: string[]
+  duration: VideoDuration = 8
 ): Promise<string> => {
   const resolvedVideoModel = resolveModel('video', model);
   const requestModel = resolveRequestModel('video', model) || model;
@@ -1480,27 +1472,18 @@ export const generateVideo = async (
     return generateVideoWithSora2(prompt, startImageBase64, apiKey, aspectRatio, duration, requestModel || 'sora-2');
   }
   
-  // 判断是否为多图模式 (veo-r2v)
-  const isR2vMode = model === 'veo-r2v' || requestModel === 'veo-r2v';
-  
   // 如果是 veo 模型，根据横竖屏和是否有参考图动态选择模型名称
   let actualModel = requestModel;
-  if (isR2vMode) {
-    // Veo 3.0 多图模式 - 始终使用 r2v 模型
-    actualModel = getVeoModelName(false, aspectRatio, 'veo-r2v');
-    console.log(`🎬 使用 Veo R2V 多图模式: ${actualModel} (${aspectRatio})`);
-  } else if (actualModel === 'veo' || actualModel.startsWith('veo_3_1')) {
+  if (actualModel === 'veo' || actualModel.startsWith('veo_3_1')) {
     const hasReferenceImage = !!startImageBase64;
     actualModel = getVeoModelName(hasReferenceImage, aspectRatio);
     console.log(`🎬 使用 Veo 首尾帧模式: ${actualModel} (${aspectRatio})`);
   }
   
   // Veo 不支持 1:1 方形视频
-  if (aspectRatio === '1:1' && (actualModel.startsWith('veo_') || isR2vMode)) {
+  if (aspectRatio === '1:1' && actualModel.startsWith('veo_')) {
     console.warn('⚠️ Veo 不支持方形视频 (1:1)，将使用横屏 (16:9)');
-    actualModel = isR2vMode 
-      ? getVeoModelName(false, '16:9', 'veo-r2v')
-      : getVeoModelName(!!startImageBase64, '16:9');
+    actualModel = getVeoModelName(!!startImageBase64, '16:9');
   }
   
   // Veo 模型使用同步模式 (/v1/chat/completions)
@@ -1509,45 +1492,27 @@ export const generateVideo = async (
     { role: 'user', content: prompt }
   ];
 
-  if (isR2vMode) {
-    // 多图模式：将所有参考图作为 image_url 内容传入
-    const allImages = referenceImages || [];
-    if (allImages.length > 0) {
-      const contentParts: any[] = [
-        { type: 'text', text: prompt }
-      ];
-      allImages.forEach(imgBase64 => {
-        const cleanImg = imgBase64.replace(/^data:image\/(png|jpeg|jpg|webp);base64,/, '');
-        contentParts.push({
-          type: 'image_url',
-          image_url: { url: `data:image/png;base64,${cleanImg}` }
-        });
-      });
-      messages[0].content = contentParts;
-    }
-  } else {
-    // 首尾帧模式：原有逻辑
-    const cleanStart = startImageBase64?.replace(/^data:image\/(png|jpeg|jpg);base64,/, '') || '';
-    const cleanEnd = endImageBase64?.replace(/^data:image\/(png|jpeg|jpg);base64,/, '') || '';
+  // 首尾帧模式
+  const cleanStart = startImageBase64?.replace(/^data:image\/(png|jpeg|jpg);base64,/, '') || '';
+  const cleanEnd = endImageBase64?.replace(/^data:image\/(png|jpeg|jpg);base64,/, '') || '';
 
-    // Add images as content if provided
-    if (cleanStart) {
-      messages[0].content = [
-        { type: 'text', text: prompt },
-        { 
-          type: 'image_url',
-          image_url: { url: `data:image/png;base64,${cleanStart}` }
-        }
-      ];
-    }
-
-    if (cleanEnd) {
-      if (Array.isArray(messages[0].content)) {
-        messages[0].content.push({
-          type: 'image_url',
-          image_url: { url: `data:image/png;base64,${cleanEnd}` }
-        });
+  // Add images as content if provided
+  if (cleanStart) {
+    messages[0].content = [
+      { type: 'text', text: prompt },
+      { 
+        type: 'image_url',
+        image_url: { url: `data:image/png;base64,${cleanStart}` }
       }
+    ];
+  }
+
+  if (cleanEnd) {
+    if (Array.isArray(messages[0].content)) {
+      messages[0].content.push({
+        type: 'image_url',
+        image_url: { url: `data:image/png;base64,${cleanEnd}` }
+      });
     }
   }
 

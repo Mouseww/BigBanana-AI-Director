@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Video, Loader2, Edit2, Images } from 'lucide-react';
+import { Video, Loader2, Edit2 } from 'lucide-react';
 import { Shot, AspectRatio, VideoDuration } from '../../types';
 import { VideoSettingsPanel } from '../AspectRatioSelector';
 import { 
@@ -14,8 +14,6 @@ interface VideoGeneratorProps {
   shot: Shot;
   hasStartFrame: boolean;
   hasEndFrame: boolean;
-  /** 参考图数量（角色+场景），用于多图模式提示 */
-  referenceImageCount?: number;
   onGenerate: (aspectRatio: AspectRatio, duration: VideoDuration, modelId: string) => void;
   onEditPrompt: () => void;
   onModelChange?: (modelId: string) => void;
@@ -25,7 +23,6 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
   shot,
   hasStartFrame,
   hasEndFrame,
-  referenceImageCount = 0,
   onGenerate,
   onEditPrompt,
   onModelChange
@@ -34,9 +31,15 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
   const videoModels = getVideoModels().filter(m => m.isEnabled);
   const defaultModel = getActiveVideoModel();
   
+  // 迁移旧模型名：veo-r2v / veo_3_0_r2v_* 已下线，回退到 veo
+  const migrateModelId = (id?: string): string | undefined => {
+    if (id === 'veo-r2v' || id?.startsWith('veo_3_0_r2v')) return 'veo';
+    return id;
+  };
+
   // 状态
   const [selectedModelId, setSelectedModelId] = useState<string>(
-    shot.videoModel || defaultModel?.id || videoModels[0]?.id || 'sora-2'
+    migrateModelId(shot.videoModel) || defaultModel?.id || videoModels[0]?.id || 'sora-2'
   );
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(() => getDefaultAspectRatio());
   const [duration, setDuration] = useState<VideoDuration>(() => getDefaultVideoDuration());
@@ -44,9 +47,6 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
   // 当前选中的模型
   const selectedModel = videoModels.find(m => m.id === selectedModelId) as VideoModelDefinition | undefined;
   const modelType: 'sora' | 'veo' = selectedModel?.params.mode === 'async' ? 'sora' : 'veo';
-  
-  // 是否为多图模式
-  const isR2vMode = selectedModelId === 'veo-r2v';
   
   const isGenerating = shot.interval?.status === 'generating';
   const hasVideo = !!shot.interval?.videoUrl;
@@ -69,8 +69,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
     onGenerate(aspectRatio, duration, selectedModelId);
   };
 
-  // 多图模式下，不需要首帧也能生成（只要有参考图或提示词）
-  const canGenerate = isR2vMode ? true : hasStartFrame;
+  const canGenerate = hasStartFrame;
 
   return (
     <div className="bg-[var(--bg-surface)] rounded-xl p-5 border border-[var(--border-primary)] space-y-4">
@@ -110,7 +109,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
         >
           {videoModels.map((model) => {
             const vm = model as VideoModelDefinition;
-            const modeLabel = vm.id === 'veo-r2v' ? '多图' : (vm.params.mode === 'async' ? '异步' : '首尾帧');
+            const modeLabel = vm.params.mode === 'async' ? '异步' : '首尾帧';
             return (
               <option key={model.id} value={model.id}>
                 {model.name} ({modeLabel})
@@ -120,38 +119,14 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
         </select>
         {selectedModel && (
           <p className="text-[9px] text-[var(--text-muted)] font-mono">
-            {isR2vMode ? (
-              <>✦ 多图模式：传入角色/场景参考图直接生成视频，无需首尾帧</>
-            ) : (
-              <>
-                ✦ {selectedModel.name}: 
-                {selectedModel.params.mode === 'async' 
-                  ? ` 支持 ${selectedModel.params.supportedAspectRatios.join('/')}，可选 ${selectedModel.params.supportedDurations.join('/')}秒`
-                  : ` 首尾帧模式，支持 ${selectedModel.params.supportedAspectRatios.join('/')}`
-                }
-              </>
-            )}
+            ✦ {selectedModel.name}: 
+            {selectedModel.params.mode === 'async' 
+              ? ` 支持 ${selectedModel.params.supportedAspectRatios.join('/')}，可选 ${selectedModel.params.supportedDurations.join('/')}秒`
+              : ` 首尾帧模式，支持 ${selectedModel.params.supportedAspectRatios.join('/')}`
+            }
           </p>
         )}
       </div>
-
-      {/* 多图模式提示 */}
-      {isR2vMode && (
-        <div className="bg-[var(--bg-hover)] rounded-lg p-3 border border-[var(--border-secondary)] space-y-1">
-          <div className="flex items-center gap-2 text-xs text-[var(--accent)]">
-            <Images className="w-3.5 h-3.5" />
-            <span className="font-bold">多图参考模式</span>
-          </div>
-          <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed">
-            将自动收集当前镜头的<span className="text-[var(--accent)] font-bold">角色参考图</span>和
-            <span className="text-[var(--accent)] font-bold">场景参考图</span>作为输入，
-            结合提示词直接生成视频。
-          </p>
-          <p className="text-[9px] text-[var(--text-muted)] font-mono">
-            当前可用参考图：{referenceImageCount > 0 ? `${referenceImageCount} 张` : '暂无（将使用纯文本生成）'}
-          </p>
-        </div>
-      )}
 
       {/* 视频设置：横竖屏 & 时长 */}
       <div className="space-y-2">
@@ -194,10 +169,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
         {isGenerating ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            {isR2vMode 
-              ? `多图生成视频中 (${aspectRatio})...`
-              : `生成视频中 (${aspectRatio}, ${modelType === 'sora' ? `${duration}秒` : selectedModel?.name})...`
-            }
+            {`生成视频中 (${aspectRatio}, ${modelType === 'sora' ? `${duration}秒` : selectedModel?.name})...`}
           </>
         ) : (
           <>{hasVideo ? '重新生成视频' : '开始生成视频'}</>
@@ -205,7 +177,7 @@ const VideoGenerator: React.FC<VideoGeneratorProps> = ({
       </button>
       
       {/* Status Messages */}
-      {!isR2vMode && !hasEndFrame && (
+      {!hasEndFrame && (
         <div className="text-[9px] text-[var(--text-tertiary)] text-center font-mono">
           * 未检测到结束帧，将使用单图生成模式 (Image-to-Video)
         </div>
