@@ -34,7 +34,7 @@ const SceneContext: React.FC<SceneContextProps> = ({
         </h4>
       </div>
       
-      <div className="flex gap-4">
+      <div className="flex gap-4 min-w-0">
         <div className="w-28 h-20 bg-[var(--bg-elevated)] rounded-lg overflow-hidden flex-shrink-0 border border-[var(--border-secondary)] relative">
           {scene?.referenceImage ? (
             <img src={scene.referenceImage} className="w-full h-full object-cover" alt={scene.location} />
@@ -45,33 +45,49 @@ const SceneContext: React.FC<SceneContextProps> = ({
           )}
         </div>
         
-        <div className="flex-1 space-y-2">
-          <div className="flex items-center justify-between gap-2">
+        <div className="flex-1 min-w-0 flex flex-col gap-1.5 overflow-hidden justify-center">
+          {/* Scene Name Selection */}
+          <div className="relative group min-w-0">
             {onSceneChange && scenes.length > 1 ? (
-              <select
-                value={shot.sceneId}
-                onChange={(e) => onSceneChange(e.target.value)}
-                className="flex-1 min-w-0 max-w-[180px] bg-[var(--bg-elevated)] text-[var(--text-primary)] text-sm font-bold border border-[var(--border-secondary)] rounded px-2 py-1 outline-none focus:border-[var(--accent)] hover:border-[var(--border-secondary)] transition-colors truncate"
-                style={{ textOverflow: 'ellipsis' }}
-                title={scene?.location}
-              >
-                {scenes.map(s => (
-                  <option key={s.id} value={s.id} title={s.location}>
-                    {s.location.length > 20 ? `${s.location.slice(0, 20)}...` : s.location}
-                  </option>
-                ))}
-              </select>
+              <div className="relative flex items-center">
+                <select
+                  value={shot.sceneId}
+                  onChange={(e) => onSceneChange(e.target.value)}
+                  className="w-full appearance-none bg-transparent text-[var(--text-primary)] text-sm font-bold pr-6 outline-none hover:text-[var(--accent)] transition-colors cursor-pointer truncate"
+                  title={scene?.location}
+                >
+                  {scenes.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.location}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-tertiary)] group-hover:text-[var(--accent)]">
+                  <Edit2 className="w-3 h-3" />
+                </div>
+              </div>
             ) : (
-              <span className="text-[var(--text-primary)] text-sm font-bold truncate max-w-[180px]" title={scene?.location}>
+              <div className="text-[var(--text-primary)] text-sm font-bold truncate" title={scene?.location}>
                 {scene?.location || '未知场景'}
-              </span>
+              </div>
             )}
-            <span className="text-sm px-2 py-0.5 bg-[var(--bg-hover)] text-[var(--text-tertiary)] rounded-full flex items-center gap-1 shrink-0">
-              <Clock className="w-3 h-3" />
-              {scene?.time}
-            </span>
           </div>
-          <p className="text-xs text-[var(--text-tertiary)] line-clamp-2">{scene?.atmosphere}</p>
+
+          {/* Time & Atmosphere Info */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+              <Clock className="w-3 h-3 shrink-0" />
+              <span className="truncate opacity-80" title={scene?.time}>
+                {scene?.time || '未设置时间'}
+              </span>
+            </div>
+            
+            {scene?.atmosphere && (
+              <p className="text-xs text-[var(--text-tertiary)] line-clamp-2 break-all leading-relaxed" title={scene.atmosphere}>
+                {scene.atmosphere}
+              </p>
+            )}
+          </div>
           
           {/* Character List */}
           <div className="flex flex-col gap-2 pt-2">

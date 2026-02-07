@@ -109,13 +109,13 @@ const ShotWorkbench: React.FC<ShotWorkbenchProps> = ({
     <div className="w-[480px] bg-[var(--bg-deep)] flex flex-col h-full shadow-2xl animate-in slide-in-from-right-10 duration-300 relative z-20">
       {/* Header */}
       <div className="h-16 px-6 border-b border-[var(--border-primary)] flex items-center justify-between bg-[var(--bg-surface)] shrink-0">
-        <div className="flex items-center gap-3">
-          <span className="min-w-[3rem] h-8 px-2 bg-[var(--accent-bg)] text-[var(--accent-text)] rounded-lg flex items-center justify-center font-bold font-mono text-[11px] whitespace-nowrap border border-[var(--accent-border)]">
+        <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
+          <span className="min-w-[3rem] h-8 px-2 bg-[var(--accent-bg)] text-[var(--accent-text)] rounded-lg flex items-center justify-center font-bold font-mono text-[11px] whitespace-nowrap border border-[var(--accent-border)] shrink-0">
             {getShotDisplayNumber()}
           </span>
-          <div>
+          <div className="min-w-0 flex-1">
             <h3 className="text-[var(--text-primary)] font-bold text-sm">镜头详情</h3>
-            <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest">
+            <p className="text-[10px] text-[var(--text-tertiary)] uppercase tracking-widest truncate" title={shot.cameraMovement}>
               {shot.cameraMovement}
             </p>
           </div>
