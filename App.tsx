@@ -253,7 +253,7 @@ function App() {
             </p>
           </div>
           <div className="text-xs text-[var(--text-muted)]">
-            <a href="https://bigbanana.tree456.com/" target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)] transition-colors">
+            <a href="https://director.tree456.com/" target="_blank" rel="noreferrer" className="hover:text-[var(--accent-text)] transition-colors">
               访问产品首页了解更多
             </a>
           </div>
