@@ -65,6 +65,43 @@ Technical Requirements:
 - Language: Use {language} for voiceover and subtitles`
   },
   
+  // 九宫格分镜模式的视频提示词（Sora-2 专用）
+  sora2NineGrid: {
+    chinese: `提供的参考图片是一张3x3九宫格分镜板（Storyboard），包含同一场景的9个不同镜头视角。
+请将这张分镜板理解为镜头规划，按照从左到右、从上到下的顺序（面板1→9）依次切换镜头视角来生成一段连贯的视频。
+
+动作描述：{actionSummary}
+
+九宫格各面板镜头规划：
+{panelDescriptions}
+
+技术要求：
+- 关键：这是一张分镜参考图，不要让9个格子各自独立运动！而是按面板1→9的顺序依次切换不同的镜头视角，形成流畅的蒙太奇剪辑效果
+- 镜头切换：每个面板视角停留约{secondsPerPanel}秒，通过自然的镜头运动（推拉摇移、切换）过渡到下一个视角
+- 整体镜头运动：{cameraMovement}
+- 运动：确保镜头切换流畅自然，保持叙事连贯性
+- 角色一致性：全程保持角色外观（面部、发型、服装）完全一致
+- 视觉风格：电影质感，全程保持一致的光照和色调
+- 语言：配音和字幕使用中文`,
+
+    english: `The provided reference image is a 3x3 storyboard grid containing 9 different camera angles of the same scene.
+Interpret this storyboard as a shot plan and generate a continuous video that transitions through each panel's camera angle in order (Panel 1 through 9, left to right, top to bottom).
+
+Action Description: {actionSummary}
+
+Storyboard Panel Breakdown:
+{panelDescriptions}
+
+Technical Requirements:
+- CRITICAL: This is a STORYBOARD reference - do NOT animate each grid cell independently! Instead, transition through the camera angles of panels 1→9 sequentially, creating a smooth montage-style edit
+- Shot Pacing: Each panel's angle should last approximately {secondsPerPanel} seconds, with natural camera movements (pan, tilt, dolly, cut) transitioning to the next angle
+- Overall Camera Movement: {cameraMovement}
+- Motion: Ensure smooth and natural shot transitions, maintaining narrative continuity
+- Character Consistency: Maintain identical character appearance (face, hair, clothing) throughout
+- Visual Style: Cinematic quality with consistent lighting and color tone throughout
+- Language: Use {language} for voiceover and subtitles`
+  },
+
   veo: {
     simple: `{actionSummary}
 

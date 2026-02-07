@@ -1,4 +1,4 @@
-import { Shot, ProjectState, Keyframe, NineGridPanel } from '../../types';
+import { Shot, ProjectState, Keyframe, NineGridPanel, NineGridData } from '../../types';
 import { VISUAL_STYLE_PROMPTS, VIDEO_PROMPT_TEMPLATES, NINE_GRID } from './constants';
 import { getCameraMovementCompositionGuide } from './cameraMovementGuides';
 
@@ -126,15 +126,41 @@ export const buildKeyframePromptWithAI = async (
 
 /**
  * 构建视频生成提示词
+ * @param nineGrid - 可选，如果首帧来自九宫格整图，则使用九宫格分镜模式的视频提示词
+ * @param videoDuration - 视频总时长（秒），用于计算九宫格模式下每个面板的停留时间
  */
 export const buildVideoPrompt = (
   actionSummary: string,
   cameraMovement: string,
   videoModel: 'sora-2' | 'veo' | 'veo_3_1_t2v_fast_landscape' | 'veo_3_1_t2v_fast_portrait' | 'veo_3_1_i2v_s_fast_fl_landscape' | 'veo_3_1_i2v_s_fast_fl_portrait' | string,
-  language: string
+  language: string,
+  nineGrid?: NineGridData,
+  videoDuration?: number
 ): string => {
   const isChinese = language === '中文' || language === 'Chinese';
   
+  // 九宫格分镜模式：首帧是九宫格整图时，使用专用提示词
+  if (nineGrid && nineGrid.panels.length > 0 && videoModel === 'sora-2') {
+    const panelDescriptions = nineGrid.panels.map((p, idx) => 
+      `  面板${idx + 1} [${NINE_GRID.positionLabels[idx]}]: ${p.shotSize}/${p.cameraAngle} - ${p.description}`
+    ).join('\n');
+    
+    const totalDuration = videoDuration || 8;
+    const secondsPerPanel = Math.max(0.5, Math.round((totalDuration / 9) * 10) / 10);
+    
+    const template = isChinese
+      ? VIDEO_PROMPT_TEMPLATES.sora2NineGrid.chinese
+      : VIDEO_PROMPT_TEMPLATES.sora2NineGrid.english;
+    
+    return template
+      .replace('{actionSummary}', actionSummary)
+      .replace('{panelDescriptions}', panelDescriptions)
+      .replace(/\{secondsPerPanel\}/g, String(secondsPerPanel))
+      .replace('{cameraMovement}', cameraMovement)
+      .replace('{language}', language);
+  }
+  
+  // 普通模式
   if (videoModel === 'sora-2') {
     const template = isChinese 
       ? VIDEO_PROMPT_TEMPLATES.sora2.chinese 

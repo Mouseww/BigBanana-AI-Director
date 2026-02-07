@@ -223,11 +223,18 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
     
     const projectLanguage = project.language || project.scriptData?.language || '中文';
     
+    // 检测是否为九宫格分镜模式：首帧图片就是九宫格整图
+    const isNineGridMode = shot.nineGrid?.status === 'completed' 
+      && shot.nineGrid?.imageUrl 
+      && sKf.imageUrl === shot.nineGrid.imageUrl;
+    
     const videoPrompt = buildVideoPrompt(
       shot.actionSummary,
       shot.cameraMovement,
       selectedModel,
-      projectLanguage
+      projectLanguage,
+      isNineGridMode ? shot.nineGrid : undefined,
+      duration
     );
     
     const intervalId = shot.interval?.id || generateId(`int-${shot.id}`);
@@ -948,11 +955,16 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
               if (!promptValue) {
                 const selectedModel = activeShot.videoModel || DEFAULTS.videoModel;
                 const projectLanguage = project.language || project.scriptData?.language || '中文';
+                const startKf = activeShot.keyframes?.find(k => k.type === 'start');
+                const isNineGridMode = activeShot.nineGrid?.status === 'completed'
+                  && activeShot.nineGrid?.imageUrl
+                  && startKf?.imageUrl === activeShot.nineGrid.imageUrl;
                 promptValue = buildVideoPrompt(
                   activeShot.actionSummary,
                   activeShot.cameraMovement,
                   selectedModel,
-                  projectLanguage
+                  projectLanguage,
+                  isNineGridMode ? activeShot.nineGrid : undefined
                 );
               }
               setEditModal({ 
