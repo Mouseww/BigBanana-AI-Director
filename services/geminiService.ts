@@ -1,4 +1,4 @@
-import { ScriptData, Shot, Character, Scene, AspectRatio, VideoDuration } from "../types";
+import { ScriptData, Shot, Character, Scene, AspectRatio, VideoDuration, NineGridPanel } from "../types";
 import { addRenderLogWithTokens } from './renderLogService';
 import { 
   getGlobalApiKey as getRegistryApiKey,
@@ -2612,6 +2612,173 @@ ${result.trim()}`;
     // 如果AI增强失败,返回基础提示词
     console.warn('⚠️ 回退到基础提示词');
     return basePrompt;
+  }
+};
+
+// ============================================
+// 九宫格分镜预览功能（高级功能）
+// ============================================
+
+/**
+ * 使用 Chat 模型将镜头动作拆分为 9 个不同的摄影视角
+ * @param actionSummary - 镜头动作描述
+ * @param cameraMovement - 原始镜头运动
+ * @param sceneInfo - 场景信息
+ * @param characterNames - 角色名称列表
+ * @param visualStyle - 视觉风格
+ * @returns 9 个 NineGridPanel 的数组
+ */
+export const generateNineGridPanels = async (
+  actionSummary: string,
+  cameraMovement: string,
+  sceneInfo: { location: string; time: string; atmosphere: string },
+  characterNames: string[],
+  visualStyle: string
+): Promise<NineGridPanel[]> => {
+  const startTime = Date.now();
+  console.log('🎬 九宫格分镜 - 开始AI拆分视角...');
+  
+  const model = getActiveChatModel()?.id || 'gpt-5.1';
+  
+  const systemPrompt = `你是一位专业的电影分镜师和摄影指导。你的任务是将一个镜头动作拆解为9个不同的摄影视角，用于九宫格分镜预览。
+每个视角必须展示相同场景的不同景别和机位角度组合，确保覆盖从远景到特写、从俯拍到仰拍的多样化视角。`;
+  
+  const userPrompt = `请将以下镜头动作拆解为9个不同的摄影视角，用于生成一张3x3九宫格分镜图。
+
+【镜头动作】${actionSummary}
+【原始镜头运动】${cameraMovement}
+【场景信息】地点: ${sceneInfo.location}, 时间: ${sceneInfo.time}, 氛围: ${sceneInfo.atmosphere}
+【角色】${characterNames.length > 0 ? characterNames.join('、') : '无特定角色'}
+【视觉风格】${visualStyle}
+
+请按照以下要求返回JSON格式数据：
+1. 9个视角必须覆盖不同的景别和角度组合，避免重复
+2. 建议覆盖：建立镜头(远/全景)、人物交互(中景)、情绪表达(近景/特写)、氛围细节(各种角度)
+3. 每个视角的description必须包含具体的画面内容描述（角色位置、动作、表情、环境细节等）
+4. description使用英文撰写，但可以包含场景和角色的中文名称
+
+请严格按照以下JSON格式输出，不要包含其他文字：
+{
+  "panels": [
+    {
+      "index": 0,
+      "shotSize": "远景",
+      "cameraAngle": "俯拍",
+      "description": "Establishing aerial shot showing..."
+    },
+    {
+      "index": 1,
+      "shotSize": "中景",
+      "cameraAngle": "平视",
+      "description": "Medium shot at eye level..."
+    }
+  ]
+}
+
+注意：必须恰好返回9个panel（index 0-8），按照九宫格从左到右、从上到下的顺序排列。`;
+  
+  const fullPrompt = `${systemPrompt}\n\n${userPrompt}`;
+  
+  try {
+    const responseText = await retryOperation(() => chatCompletion(fullPrompt, model, 0.7, 4096, 'json_object'));
+    const duration = Date.now() - startTime;
+    
+    const cleaned = cleanJsonString(responseText);
+    const parsed = JSON.parse(cleaned);
+    
+    let panels: NineGridPanel[] = parsed.panels || [];
+    
+    // 确保恰好有9个panel
+    if (panels.length < 9) {
+      // 补充不足的panel
+      for (let i = panels.length; i < 9; i++) {
+        panels.push({
+          index: i,
+          shotSize: '中景',
+          cameraAngle: '平视',
+          description: `${actionSummary} - alternate angle ${i + 1}`
+        });
+      }
+    } else if (panels.length > 9) {
+      panels = panels.slice(0, 9);
+    }
+    
+    // 确保每个panel的index正确
+    panels = panels.map((p, idx) => ({ ...p, index: idx }));
+    
+    console.log(`✅ 九宫格分镜 - AI拆分完成，耗时: ${duration}ms`);
+    return panels;
+  } catch (error: any) {
+    console.error('❌ 九宫格分镜 - AI拆分失败:', error);
+    throw new Error(`九宫格视角拆分失败: ${error.message}`);
+  }
+};
+
+/**
+ * 使用 Gemini Image 生成九宫格分镜图片
+ * 通过提示词引导模型在单张图片中以 3x3 grid 布局输出 9 个画面
+ * @param panels - 9 个面板的描述数据
+ * @param referenceImages - 参考图片列表（场景+角色）
+ * @param visualStyle - 视觉风格
+ * @returns 生成的九宫格图片 (base64)
+ */
+export const generateNineGridImage = async (
+  panels: NineGridPanel[],
+  referenceImages: string[] = [],
+  visualStyle: string,
+  aspectRatio: AspectRatio = '16:9'
+): Promise<string> => {
+  const startTime = Date.now();
+  console.log('🎬 九宫格分镜 - 开始生成九宫格图片...');
+  
+  const stylePrompt = ({
+    'live-action': 'photorealistic, cinematic film quality, real human actors, professional cinematography, natural lighting, 8K resolution',
+    'anime': 'Japanese anime style, cel-shaded, vibrant colors, expressive eyes, dynamic poses, Studio Ghibli/Makoto Shinkai quality',
+    '2d-animation': 'classic 2D animation, hand-drawn style, Disney/Pixar quality, smooth lines, expressive characters, painterly backgrounds',
+    '3d-animation': 'high-quality 3D CGI animation, Pixar/DreamWorks style, subsurface scattering, detailed textures, stylized characters',
+    'cyberpunk': 'cyberpunk aesthetic, neon-lit, rain-soaked streets, holographic displays, high-tech low-life, Blade Runner style',
+    'oil-painting': 'oil painting style, visible brushstrokes, rich textures, classical art composition, museum quality fine art',
+  })[visualStyle] || visualStyle;
+  
+  const positionLabels = [
+    'Top-Left', 'Top-Center', 'Top-Right',
+    'Middle-Left', 'Center', 'Middle-Right',
+    'Bottom-Left', 'Bottom-Center', 'Bottom-Right'
+  ];
+  
+  // 构建九宫格提示词
+  const panelDescriptions = panels.map((panel, idx) => 
+    `Panel ${idx + 1} (${positionLabels[idx]}): [${panel.shotSize} / ${panel.cameraAngle}] - ${panel.description}`
+  ).join('\n');
+  
+  const nineGridPrompt = `Generate a SINGLE image composed as a cinematic storyboard with a 3x3 grid layout (9 equal panels).
+The image shows the SAME scene from 9 DIFFERENT camera angles and shot sizes.
+Each panel is separated by thin white borders.
+
+Visual Style: ${stylePrompt}
+
+Grid Layout (left to right, top to bottom):
+${panelDescriptions}
+
+CRITICAL REQUIREMENTS:
+- The output MUST be a SINGLE image divided into exactly 9 equal rectangular panels in a 3x3 grid layout
+- Each panel MUST have a thin white border/separator (2-3px) between panels
+- All 9 panels show the SAME scene from DIFFERENT camera angles and shot sizes
+- Maintain STRICT character consistency across ALL panels (same face, hair, clothing, body proportions)
+- Maintain consistent lighting, color palette, and atmosphere across all panels
+- Each panel should be a complete, well-composed frame suitable for use as a keyframe
+- The overall image should read as a professional cinematographer's shot planning board`;
+  
+  try {
+    // 使用传入的宽高比（与关键帧一致），确保九宫格预览与最终生成的首帧比例匹配
+    const imageUrl = await generateImage(nineGridPrompt, referenceImages, aspectRatio);
+    const duration = Date.now() - startTime;
+    
+    console.log(`✅ 九宫格分镜 - 图片生成完成，耗时: ${duration}ms`);
+    return imageUrl;
+  } catch (error: any) {
+    console.error('❌ 九宫格分镜 - 图片生成失败:', error);
+    throw new Error(`九宫格图片生成失败: ${error.message}`);
   }
 };
 

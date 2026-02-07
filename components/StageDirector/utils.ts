@@ -1,5 +1,5 @@
-import { Shot, ProjectState, Keyframe } from '../../types';
-import { VISUAL_STYLE_PROMPTS, VIDEO_PROMPT_TEMPLATES } from './constants';
+import { Shot, ProjectState, Keyframe, NineGridPanel } from '../../types';
+import { VISUAL_STYLE_PROMPTS, VIDEO_PROMPT_TEMPLATES, NINE_GRID } from './constants';
 import { getCameraMovementCompositionGuide } from './cameraMovementGuides';
 
 /**
@@ -314,4 +314,54 @@ export const replaceShotWithSubShots = (
   ];
   
   return newShots;
+};
+
+// ============================================
+// 九宫格分镜预览工具函数（高级功能）
+// ============================================
+
+/**
+ * 将选中的九宫格面板描述转换为首帧提示词
+ * 将九宫格中选定的视角信息融合到首帧提示词中
+ * @param panel - 选中的九宫格面板
+ * @param actionSummary - 原始动作描述
+ * @param visualStyle - 视觉风格
+ * @param cameraMovement - 原始镜头运动
+ * @returns 构建好的首帧提示词
+ */
+export const buildPromptFromNineGridPanel = (
+  panel: NineGridPanel,
+  actionSummary: string,
+  visualStyle: string,
+  cameraMovement: string
+): string => {
+  const stylePrompt = VISUAL_STYLE_PROMPTS[visualStyle] || visualStyle;
+  
+  // 角色一致性要求
+  const characterConsistencyGuide = `【角色一致性要求】CHARACTER CONSISTENCY REQUIREMENTS - CRITICAL
+⚠️ 如果提供了角色参考图,画面中的人物外观必须严格遵循参考图:
+• 面部特征: 五官轮廓、眼睛颜色和形状、鼻子和嘴巴的结构必须完全一致
+• 发型发色: 头发的长度、颜色、质感、发型样式必须保持一致
+• 服装造型: 服装的款式、颜色、材质、配饰必须与参考图匹配
+• 体型特征: 身材比例、身高体型必须保持一致
+⚠️ 这是最高优先级要求,不可妥协!`;
+
+  return `${panel.description}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【来源】九宫格分镜预览 - ${NINE_GRID.positionLabels[panel.index]}
+【景别】${panel.shotSize}
+【机位角度】${panel.cameraAngle}
+【原始动作】${actionSummary}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【视觉风格】Visual Style
+${stylePrompt}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【镜头运动】Camera Movement
+${cameraMovement}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${characterConsistencyGuide}`;
 };
