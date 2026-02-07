@@ -26,7 +26,8 @@ import ShotWorkbench from './ShotWorkbench';
 import ImagePreviewModal from './ImagePreviewModal';
 import NineGridPreview from './NineGridPreview';
 import { useAlert } from '../GlobalAlert';
-import { getDefaultAspectRatio } from '../../services/modelRegistry';
+import { AspectRatioSelector } from '../AspectRatioSelector';
+import { getUserAspectRatio, setUserAspectRatio } from '../../services/modelRegistry';
 
 interface Props {
   project: ProjectState;
@@ -44,8 +45,14 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
   const [isSplittingShot, setIsSplittingShot] = useState(false); // 是否正在拆分镜头
   const [showNineGrid, setShowNineGrid] = useState(false); // 是否显示九宫格预览弹窗
   
-  // 关键帧生成使用的横竖屏比例（从默认配置获取）
-  const [keyframeAspectRatio, setKeyframeAspectRatio] = useState<AspectRatio>(() => getDefaultAspectRatio());
+  // 关键帧生成使用的横竖屏比例（从持久化配置读取）
+  const [keyframeAspectRatio, setKeyframeAspectRatioState] = useState<AspectRatio>(() => getUserAspectRatio());
+  
+  // 包装 setKeyframeAspectRatio，同时持久化到模型配置
+  const setKeyframeAspectRatio = (ratio: AspectRatio) => {
+    setKeyframeAspectRatioState(ratio);
+    setUserAspectRatio(ratio);
+  };
   
   // 统一的编辑状态
   const [editModal, setEditModal] = useState<{
@@ -874,6 +881,17 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
         </div>
 
         <div className="flex items-center gap-3">
+          {/* 横竖屏选择 */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-[var(--text-tertiary)] uppercase">比例</span>
+            <AspectRatioSelector
+              value={keyframeAspectRatio}
+              onChange={setKeyframeAspectRatio}
+              allowSquare={false}
+              disabled={!!batchProgress}
+            />
+          </div>
+          <div className="w-px h-6 bg-[var(--bg-hover)]" />
           {/* AI增强开关 */}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[var(--bg-base)]/30 border border-[var(--border-primary)]">
             <Sparkles className={`w-3.5 h-3.5 ${useAIEnhancement ? 'text-[var(--accent-text)]' : 'text-[var(--text-muted)]'}`} />
@@ -1013,6 +1031,7 @@ const StageDirector: React.FC<Props> = ({ project, updateProject, onApiKeyError 
           onSelectPanel={handleSelectNineGridPanel}
           onUseWholeImage={handleUseWholeNineGridAsFrame}
           onRegenerate={() => handleGenerateNineGrid(activeShot)}
+          aspectRatio={keyframeAspectRatio}
         />
       )}
 

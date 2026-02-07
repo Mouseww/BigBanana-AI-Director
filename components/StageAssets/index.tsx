@@ -20,9 +20,7 @@ import { useAlert } from '../GlobalAlert';
 import { getAllAssetLibraryItems, saveAssetToLibrary, deleteAssetFromLibrary } from '../../services/storageService';
 import { applyLibraryItemToProject, createLibraryItemFromCharacter, createLibraryItemFromScene, cloneCharacterForProject } from '../../services/assetLibraryService';
 import { AspectRatioSelector } from '../AspectRatioSelector';
-import { getDefaultAspectRatio, getImageModels, getActiveImageModel, getModelById } from '../../services/modelRegistry';
-import ModelSelector from '../ModelSelector';
-import { ImageModelDefinition } from '../../types/model';
+import { getUserAspectRatio, setUserAspectRatio, getActiveImageModel } from '../../services/modelRegistry';
 
 interface Props {
   project: ProjectState;
@@ -43,14 +41,15 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
   const [libraryProjectFilter, setLibraryProjectFilter] = useState('all');
   const [replaceTargetCharId, setReplaceTargetCharId] = useState<string | null>(null);
   
-  // 横竖屏选择状态
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(() => getDefaultAspectRatio());
+  // 横竖屏选择状态（从持久化配置读取）
+  const [aspectRatio, setAspectRatioState] = useState<AspectRatio>(() => getUserAspectRatio());
   
-  // 图片模型选择状态
-  const defaultImageModel = getActiveImageModel();
-  const [selectedImageModelId, setSelectedImageModelId] = useState<string>(
-    defaultImageModel?.id || 'gemini-3-pro-image-preview'
-  );
+  // 包装 setAspectRatio，同时持久化到模型配置
+  const setAspectRatio = (ratio: AspectRatio) => {
+    setAspectRatioState(ratio);
+    setUserAspectRatio(ratio);
+  };
+  
 
   // 获取项目配置
   const language = getProjectLanguage(project.language, project.scriptData?.language);
@@ -916,18 +915,6 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
             <Archive className="w-4 h-4" />
             资产库
           </button>
-          {/* 图片模型选择 */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-[var(--text-tertiary)] uppercase">模型</span>
-            <ModelSelector
-              type="image"
-              value={selectedImageModelId}
-              onChange={setSelectedImageModelId}
-              disabled={!!batchProgress}
-              compact
-            />
-          </div>
-          <div className="w-px h-6 bg-[var(--bg-hover)]" />
           {/* 横竖屏选择 */}
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-[var(--text-tertiary)] uppercase">比例</span>
@@ -935,9 +922,9 @@ const StageAssets: React.FC<Props> = ({ project, updateProject, onApiKeyError })
               value={aspectRatio}
               onChange={setAspectRatio}
               allowSquare={(() => {
-                // 根据选中的图片模型判断是否支持方形
-                const selectedModel = getModelById(selectedImageModelId) as ImageModelDefinition | undefined;
-                return selectedModel?.params?.supportedAspectRatios?.includes('1:1') ?? false;
+                // 根据当前激活的图片模型判断是否支持方形
+                const activeModel = getActiveImageModel();
+                return activeModel?.params?.supportedAspectRatios?.includes('1:1') ?? false;
               })()}
               disabled={!!batchProgress}
             />

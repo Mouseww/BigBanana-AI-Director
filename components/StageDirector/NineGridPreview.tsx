@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Loader2, RefreshCw, Check, Grid3x3, AlertCircle, Image as ImageIcon, Crop } from 'lucide-react';
-import { NineGridData, NineGridPanel } from '../../types';
+import { NineGridData, NineGridPanel, AspectRatio } from '../../types';
 import { NINE_GRID } from './constants';
 
 interface NineGridPreviewProps {
@@ -10,6 +10,8 @@ interface NineGridPreviewProps {
   onSelectPanel: (panel: NineGridPanel) => void;
   onUseWholeImage: () => void;  // 整张九宫格图直接用作首帧
   onRegenerate: () => void;
+  /** 当前画面比例（横屏/竖屏），用于调整预览布局 */
+  aspectRatio?: AspectRatio;
 }
 
 const NineGridPreview: React.FC<NineGridPreviewProps> = ({
@@ -18,7 +20,8 @@ const NineGridPreview: React.FC<NineGridPreviewProps> = ({
   onClose,
   onSelectPanel,
   onUseWholeImage,
-  onRegenerate
+  onRegenerate,
+  aspectRatio = '16:9'
 }) => {
   const [hoveredPanel, setHoveredPanel] = useState<number | null>(null);
   const [selectedPanel, setSelectedPanel] = useState<number | null>(null);
@@ -118,9 +121,9 @@ const NineGridPreview: React.FC<NineGridPreviewProps> = ({
           {/* Completed State - Main Content */}
           {isCompleted && nineGrid && (
             <div className="p-6 space-y-4">
-              <div className="flex gap-6">
+              <div className={`flex gap-6 ${aspectRatio === '9:16' ? 'items-start' : ''}`}>
                 {/* Left: Nine Grid Image with overlay grid */}
-                <div className="flex-1 min-w-0">
+                <div className={aspectRatio === '9:16' ? 'w-[320px] shrink-0' : 'flex-1 min-w-0'}>
                   <div className="relative bg-[var(--bg-base)] rounded-lg border border-[var(--border-primary)] overflow-hidden">
                     {/* Base Image - 自适应实际图片比例 */}
                     <img
@@ -180,7 +183,7 @@ const NineGridPreview: React.FC<NineGridPreviewProps> = ({
                 </div>
 
                 {/* Right: Panel descriptions list */}
-                <div className="w-64 shrink-0 space-y-2">
+                <div className={`${aspectRatio === '9:16' ? 'flex-1 min-w-0' : 'w-64 shrink-0'} space-y-2`}>
                   <h4 className="text-xs font-bold text-[var(--text-tertiary)] uppercase tracking-widest pb-1 border-b border-[var(--border-primary)]">
                     视角列表
                   </h4>

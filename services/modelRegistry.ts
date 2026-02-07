@@ -503,7 +503,7 @@ export const isModelAvailable = (modelId: string): boolean => {
 // ============================================
 
 /**
- * 获取默认横竖屏比例
+ * 获取默认横竖屏比例（模型默认值）
  */
 export const getDefaultAspectRatio = (): AspectRatio => {
   const imageModel = getActiveImageModel();
@@ -511,6 +511,27 @@ export const getDefaultAspectRatio = (): AspectRatio => {
     return imageModel.params.defaultAspectRatio;
   }
   return '16:9';
+};
+
+/**
+ * 获取用户选择的横竖屏比例
+ * 读取当前激活图片模型的 defaultAspectRatio
+ */
+export const getUserAspectRatio = (): AspectRatio => {
+  return getDefaultAspectRatio();
+};
+
+/**
+ * 设置用户选择的横竖屏比例（同步更新当前激活图片模型的默认比例）
+ * 修改会持久化保存，并与模型配置页面的"默认比例"保持一致
+ */
+export const setUserAspectRatio = (ratio: AspectRatio): void => {
+  const activeModel = getActiveImageModel();
+  if (activeModel) {
+    updateModel(activeModel.id, {
+      params: { ...activeModel.params, defaultAspectRatio: ratio }
+    } as any);
+  }
 };
 
 /**
