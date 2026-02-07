@@ -67,8 +67,8 @@ Technical Requirements:
   
   // 九宫格分镜模式的视频提示词（Sora-2 专用）
   sora2NineGrid: {
-    chinese: `提供的参考图片是一张3x3九宫格分镜板（Storyboard），包含同一场景的9个不同镜头视角。
-请将这张分镜板理解为镜头规划，按照从左到右、从上到下的顺序（面板1→9）依次切换镜头视角来生成一段连贯的视频。
+    chinese: `提供的参考图片是一张3x3九宫格分镜板（Storyboard），仅作为镜头规划参考，请勿在视频中展示该分镜板图片本身。
+视频必须直接从面板1的镜头画面开始，然后按照从左到右、从上到下的顺序（面板1→9）依次切换镜头视角，生成一段连贯的视频。
 
 动作描述：{actionSummary}
 
@@ -76,7 +76,8 @@ Technical Requirements:
 {panelDescriptions}
 
 技术要求：
-- 关键：这是一张分镜参考图，不要让9个格子各自独立运动！而是按面板1→9的顺序依次切换不同的镜头视角，形成流畅的蒙太奇剪辑效果
+- 最关键：视频的第一帧就必须是面板1所描述的镜头画面（全屏呈现），绝对不要在视频开头或任何时刻展示九宫格分镜板原图！参考图仅用于理解镜头规划，不能出现在视频画面中
+- 关键：不要让9个格子各自独立运动！而是按面板1→9的顺序依次切换不同的镜头视角，形成流畅的蒙太奇剪辑效果
 - 镜头切换：每个面板视角停留约{secondsPerPanel}秒，通过自然的镜头运动（推拉摇移、切换）过渡到下一个视角
 - 整体镜头运动：{cameraMovement}
 - 运动：确保镜头切换流畅自然，保持叙事连贯性
@@ -84,8 +85,8 @@ Technical Requirements:
 - 视觉风格：电影质感，全程保持一致的光照和色调
 - 语言：配音和字幕使用中文`,
 
-    english: `The provided reference image is a 3x3 storyboard grid containing 9 different camera angles of the same scene.
-Interpret this storyboard as a shot plan and generate a continuous video that transitions through each panel's camera angle in order (Panel 1 through 9, left to right, top to bottom).
+    english: `The provided reference image is a 3x3 storyboard grid containing 9 different camera angles of the same scene. It is ONLY for shot planning reference — do NOT display the storyboard grid image itself in the video.
+The video MUST begin directly with the full-screen shot described in Panel 1, then transition through each panel's camera angle in order (Panel 1 through 9, left to right, top to bottom).
 
 Action Description: {actionSummary}
 
@@ -93,6 +94,7 @@ Storyboard Panel Breakdown:
 {panelDescriptions}
 
 Technical Requirements:
+- MOST CRITICAL: The very first frame of the video MUST be the full-screen shot described in Panel 1. NEVER show the nine-grid storyboard image at the beginning or at any point in the video! The reference image is ONLY for understanding the shot plan, it must NOT appear in the video output
 - CRITICAL: This is a STORYBOARD reference - do NOT animate each grid cell independently! Instead, transition through the camera angles of panels 1→9 sequentially, creating a smooth montage-style edit
 - Shot Pacing: Each panel's angle should last approximately {secondsPerPanel} seconds, with natural camera movements (pan, tilt, dolly, cut) transitioning to the next angle
 - Overall Camera Movement: {cameraMovement}
@@ -104,7 +106,8 @@ Technical Requirements:
 
   // 九宫格分镜模式的视频提示词（Veo R2V 多图模式专用）
   veoNineGrid: {
-    chinese: `参考图片描述了同一场景的9个不同镜头视角（3x3九宫格分镜板），请根据这些参考图和镜头规划生成一段连贯的视频。
+    chinese: `参考图片描述了同一场景的9个不同镜头视角（3x3九宫格分镜板），仅作为镜头规划参考。请勿在视频中展示分镜板图片本身。
+视频必须直接从面板1描述的镜头画面开始（全屏呈现），然后根据镜头规划依次切换视角，生成一段连贯的视频。
 
 动作描述：{actionSummary}
 
@@ -112,13 +115,15 @@ Technical Requirements:
 {panelDescriptions}
 
 技术要求：
+- 最关键：视频第一帧就必须是面板1所描述的镜头画面，绝对不要在视频开头或任何时刻展示九宫格分镜板原图！参考图仅用于理解镜头规划
 - 按面板1→9的顺序依次切换不同的镜头视角，形成流畅的蒙太奇剪辑效果
 - 镜头切换：每个面板视角停留约{secondsPerPanel}秒，通过自然的镜头运动过渡到下一个视角
 - 整体镜头运动：{cameraMovement}
 - 角色一致性：全程保持角色外观完全一致
 - 配音语言：使用中文配音`,
 
-    english: `The reference images depict 9 different camera angles of the same scene (3x3 storyboard grid). Generate a continuous video that transitions through each panel's camera angle in order.
+    english: `The reference images depict 9 different camera angles of the same scene (3x3 storyboard grid). They are ONLY for shot planning reference — do NOT display the storyboard grid in the video.
+The video MUST begin directly with the full-screen shot described in Panel 1, then transition through each panel's camera angle in order.
 
 Action Description: {actionSummary}
 
@@ -126,6 +131,7 @@ Storyboard Panel Breakdown:
 {panelDescriptions}
 
 Technical Requirements:
+- MOST CRITICAL: The very first frame MUST be the full-screen shot from Panel 1. NEVER show the nine-grid storyboard image at any point in the video! The reference images are ONLY for understanding the shot plan
 - Transition through the camera angles of panels 1→9 sequentially, creating a smooth montage-style edit
 - Shot Pacing: Each panel's angle should last approximately {secondsPerPanel} seconds, with natural camera movements transitioning to the next angle
 - Overall Camera Movement: {cameraMovement}
