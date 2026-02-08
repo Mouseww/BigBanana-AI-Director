@@ -170,7 +170,6 @@ const SceneContext: React.FC<SceneContextProps> = ({
           {(props.length > 0 || availableProps.length > 0) && (
             <div className="flex flex-col gap-2 pt-3 mt-1 border-t border-[var(--border-primary)]">
               <div className="flex items-center gap-1.5">
-                <Package className="w-3 h-3 text-purple-400" />
                 <span className="text-[10px] text-[var(--text-tertiary)] font-bold uppercase tracking-widest">道具 (Props)</span>
               </div>
               
