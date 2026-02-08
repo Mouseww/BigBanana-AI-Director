@@ -11,7 +11,7 @@ import ModelConfigModal from './components/ModelConfig';
 import { ProjectState } from './types';
 import { Save, CheckCircle, X } from 'lucide-react';
 import { saveProjectToDB } from './services/storageService';
-import { setGlobalApiKey } from './services/geminiService';
+import { setGlobalApiKey } from './services/aiService';
 import { setLogCallback, clearLogCallback } from './services/renderLogService';
 import { useAlert } from './components/GlobalAlert';
 import logoImg from './logo.png';

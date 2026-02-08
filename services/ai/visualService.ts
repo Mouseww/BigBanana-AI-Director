@@ -1,0 +1,570 @@
+/**
+ * 视觉资产生成服务
+ * 包含美术指导文档生成、角色/场景视觉提示词生成、图像生成
+ */
+
+import { Character, Scene, AspectRatio, ArtDirection } from "../../types";
+import { addRenderLogWithTokens } from '../renderLogService';
+import {
+  retryOperation,
+  cleanJsonString,
+  chatCompletion,
+  checkApiKey,
+  getApiBase,
+  getActiveModel,
+  resolveModel,
+  logScriptProgress,
+} from './apiCore';
+import {
+  getStylePrompt,
+  getNegativePrompt,
+  getSceneNegativePrompt,
+} from './promptConstants';
+
+// ============================================
+// 美术指导文档生成
+// ============================================
+
+/**
+ * 生成全局美术指导文档（Art Direction Brief）
+ * 在生成任何角色/场景提示词之前调用，为整个项目建立统一的视觉风格基准。
+ */
+export const generateArtDirection = async (
+  title: string,
+  genre: string,
+  logline: string,
+  characters: { name: string; gender: string; age: string; personality: string }[],
+  scenes: { location: string; time: string; atmosphere: string }[],
+  visualStyle: string,
+  language: string = '中文',
+  model: string = 'gpt-5.1'
+): Promise<ArtDirection> => {
+  console.log('🎨 generateArtDirection 调用 - 生成全局美术指导文档');
+  logScriptProgress('正在生成全局美术指导文档（Art Direction）...');
+
+  const stylePrompt = getStylePrompt(visualStyle);
+
+  const prompt = `You are a world-class Art Director for ${visualStyle} productions. 
+Your job is to create a unified Art Direction Brief that will guide ALL visual prompt generation for characters, scenes, and shots in a single project. This document ensures perfect visual consistency across every generated image.
+
+## Project Info
+- Title: ${title}
+- Genre: ${genre}
+- Logline: ${logline}
+- Visual Style: ${visualStyle} (${stylePrompt})
+- Language: ${language}
+
+## Characters
+${characters.map((c, i) => `${i + 1}. ${c.name} (${c.gender}, ${c.age}, ${c.personality})`).join('\n')}
+
+## Scenes
+${scenes.map((s, i) => `${i + 1}. ${s.location} - ${s.time} - ${s.atmosphere}`).join('\n')}
+
+## Your Task
+Create a comprehensive Art Direction Brief in JSON format. This brief will be injected into EVERY subsequent visual prompt to ensure all characters and scenes share a unified look and feel.
+
+CRITICAL RULES:
+- All descriptions must be specific, concrete, and actionable for image generation AI
+- The brief must define a COHESIVE visual world - characters and scenes must look like they belong to the SAME production
+- Color palette must be harmonious and genre-appropriate
+- Character design rules must ensure all characters share the same art style while being visually distinct from each other
+- Output all descriptive text in ${language}
+
+Output ONLY valid JSON with this exact structure:
+{
+  "colorPalette": {
+    "primary": "primary color tone description (e.g., 'deep navy blue with slight purple undertones')",
+    "secondary": "secondary color description",
+    "accent": "accent/highlight color",
+    "skinTones": "skin tone range for characters in this style (e.g., 'warm ivory to golden tan, with soft peach undertones')",
+    "saturation": "overall saturation tendency (e.g., 'medium-high, slightly desaturated for cinematic feel')",
+    "temperature": "overall color temperature (e.g., 'cool-leaning with warm accent lighting')"
+  },
+  "characterDesignRules": {
+    "proportions": "body proportion style (e.g., '7.5 head-to-body ratio, athletic builds, realistic proportions' or '6 head ratio, stylized anime proportions')",
+    "eyeStyle": "unified eye rendering approach (e.g., 'large expressive anime eyes with detailed iris reflections' or 'realistic eye proportions with cinematic catchlights')",
+    "lineWeight": "line/edge style (e.g., 'clean sharp outlines with 2px weight' or 'soft edges with no visible outlines, photorealistic blending')",
+    "detailLevel": "detail density (e.g., 'high detail on faces and hands, medium on clothing textures, stylized backgrounds')"
+  },
+  "lightingStyle": "unified lighting approach (e.g., 'three-point cinematic lighting with strong rim light, warm key light from 45-degree angle, cool fill')",
+  "textureStyle": "material/texture rendering style (e.g., 'smooth cel-shaded with subtle gradient shading' or 'photorealistic with visible skin pores and fabric weave')",
+  "moodKeywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
+  "consistencyAnchors": "A single comprehensive paragraph (80-120 words) that serves as the MASTER STYLE REFERENCE. This paragraph will be prepended to every character and scene prompt to anchor the visual style. It should describe: the overall rendering quality, the specific art style fingerprint, color grading approach, lighting philosophy, and the emotional tone of the visuals. Write it as direct instructions to an image generation AI."
+}`;
+
+  try {
+    const responseText = await retryOperation(() => chatCompletion(prompt, model, 0.4, 4096, 'json_object'));
+    const text = cleanJsonString(responseText);
+    const parsed = JSON.parse(text);
+
+    const artDirection: ArtDirection = {
+      colorPalette: {
+        primary: parsed.colorPalette?.primary || '',
+        secondary: parsed.colorPalette?.secondary || '',
+        accent: parsed.colorPalette?.accent || '',
+        skinTones: parsed.colorPalette?.skinTones || '',
+        saturation: parsed.colorPalette?.saturation || '',
+        temperature: parsed.colorPalette?.temperature || '',
+      },
+      characterDesignRules: {
+        proportions: parsed.characterDesignRules?.proportions || '',
+        eyeStyle: parsed.characterDesignRules?.eyeStyle || '',
+        lineWeight: parsed.characterDesignRules?.lineWeight || '',
+        detailLevel: parsed.characterDesignRules?.detailLevel || '',
+      },
+      lightingStyle: parsed.lightingStyle || '',
+      textureStyle: parsed.textureStyle || '',
+      moodKeywords: Array.isArray(parsed.moodKeywords) ? parsed.moodKeywords : [],
+      consistencyAnchors: parsed.consistencyAnchors || '',
+    };
+
+    console.log('✅ 全局美术指导文档生成完成:', artDirection.moodKeywords.join(', '));
+    logScriptProgress('全局美术指导文档生成完成');
+    return artDirection;
+  } catch (error: any) {
+    console.error('❌ 全局美术指导文档生成失败:', error);
+    logScriptProgress('美术指导文档生成失败，将使用默认风格');
+    return {
+      colorPalette: { primary: '', secondary: '', accent: '', skinTones: '', saturation: '', temperature: '' },
+      characterDesignRules: { proportions: '', eyeStyle: '', lineWeight: '', detailLevel: '' },
+      lightingStyle: '',
+      textureStyle: '',
+      moodKeywords: [],
+      consistencyAnchors: stylePrompt,
+    };
+  }
+};
+
+// ============================================
+// 角色视觉提示词批量生成
+// ============================================
+
+/**
+ * 批量生成所有角色的视觉提示词（Batch-Aware Generation）
+ */
+export const generateAllCharacterPrompts = async (
+  characters: Character[],
+  artDirection: ArtDirection,
+  genre: string,
+  visualStyle: string,
+  language: string = '中文',
+  model: string = 'gpt-5.1'
+): Promise<{ visualPrompt: string; negativePrompt: string }[]> => {
+  console.log(`🎭 generateAllCharacterPrompts 调用 - 批量生成 ${characters.length} 个角色的视觉提示词`);
+  logScriptProgress(`正在批量生成 ${characters.length} 个角色的视觉提示词（风格统一模式）...`);
+
+  const stylePrompt = getStylePrompt(visualStyle);
+  const negativePrompt = getNegativePrompt(visualStyle);
+
+  if (characters.length === 0) return [];
+
+  const characterList = characters.map((c, i) =>
+    `Character ${i + 1} (ID: ${c.id}):
+  - Name: ${c.name}
+  - Gender: ${c.gender}
+  - Age: ${c.age}
+  - Personality: ${c.personality}`
+  ).join('\n\n');
+
+  const prompt = `You are an expert Art Director and AI prompt engineer for ${visualStyle} style image generation.
+You must generate visual prompts for ALL ${characters.length} characters in a SINGLE response, ensuring they share a UNIFIED visual style while being visually distinct from each other.
+
+## GLOBAL ART DIRECTION (MANDATORY - ALL characters MUST follow this)
+${artDirection.consistencyAnchors}
+
+### Color Palette
+- Primary: ${artDirection.colorPalette.primary}
+- Secondary: ${artDirection.colorPalette.secondary}
+- Accent: ${artDirection.colorPalette.accent}
+- Skin Tones: ${artDirection.colorPalette.skinTones}
+- Saturation: ${artDirection.colorPalette.saturation}
+- Temperature: ${artDirection.colorPalette.temperature}
+
+### Character Design Rules (APPLY TO ALL)
+- Proportions: ${artDirection.characterDesignRules.proportions}
+- Eye Style: ${artDirection.characterDesignRules.eyeStyle}
+- Line Weight: ${artDirection.characterDesignRules.lineWeight}
+- Detail Level: ${artDirection.characterDesignRules.detailLevel}
+
+### Rendering
+- Lighting: ${artDirection.lightingStyle}
+- Texture: ${artDirection.textureStyle}
+- Mood Keywords: ${artDirection.moodKeywords.join(', ')}
+
+## Genre: ${genre}
+## Technical Quality: ${stylePrompt}
+
+## Characters to Generate
+${characterList}
+
+## REQUIRED PROMPT STRUCTURE (for EACH character, output in ${language}):
+1. Core Identity: [ethnicity, age, gender, body type - MUST follow proportions rule above]
+2. Facial Features: [specific distinguishing features - eyes MUST follow eye style rule, nose, face shape, skin tone MUST use palette skin tones]
+3. Hairstyle: [detailed hair description - color, length, style]
+4. Clothing: [detailed outfit appropriate for ${genre} genre, colors MUST harmonize with palette]
+5. Pose & Expression: [body language and facial expression matching personality]
+6. Technical Quality: ${stylePrompt}
+
+## CRITICAL CONSISTENCY RULES:
+1. ALL characters MUST share the SAME art style as defined by the Art Direction above.
+2. ALL characters' color schemes MUST harmonize within the defined color palette.
+3. ALL characters MUST use the SAME proportions: ${artDirection.characterDesignRules.proportions}
+4. ALL characters MUST use the SAME line/edge style: ${artDirection.characterDesignRules.lineWeight}
+5. ALL characters MUST have the SAME detail density: ${artDirection.characterDesignRules.detailLevel}
+6. Each character should be VISUALLY DISTINCT from others through clothing, hair color, accessories, and body language
+   - but STYLISTICALLY UNIFIED in rendering quality, detail density, color harmony, and art style.
+7. Skin tone descriptions must be from the same tonal family: ${artDirection.colorPalette.skinTones}
+8. Sections 1-3 (Core Identity, Facial Features, Hairstyle) are FIXED features for each character for consistency across all variations.
+
+## OUTPUT FORMAT
+Output ONLY valid JSON with this structure:
+{
+  "characters": [
+    {
+      "id": "character_id",
+      "visualPrompt": "single paragraph, comma-separated, 60-90 words, MUST include ${visualStyle} style keywords"
+    }
+  ]
+}
+
+The "characters" array MUST have exactly ${characters.length} items, in the SAME ORDER as the input.
+Output ONLY the JSON, no explanations.`;
+
+  try {
+    const responseText = await retryOperation(() => chatCompletion(prompt, model, 0.4, 4096, 'json_object'));
+    const text = cleanJsonString(responseText);
+    const parsed = JSON.parse(text);
+
+    const results: { visualPrompt: string; negativePrompt: string }[] = [];
+    const charResults = Array.isArray(parsed.characters) ? parsed.characters : [];
+
+    for (let i = 0; i < characters.length; i++) {
+      const charResult = charResults[i];
+      if (charResult && charResult.visualPrompt) {
+        results.push({
+          visualPrompt: charResult.visualPrompt.trim(),
+          negativePrompt: negativePrompt,
+        });
+        console.log(`  ✅ 角色 ${characters[i].name} 提示词生成成功`);
+      } else {
+        console.warn(`  ⚠️ 角色 ${characters[i].name} 在批量结果中缺失，将使用后备方案`);
+        results.push({
+          visualPrompt: '',
+          negativePrompt: negativePrompt,
+        });
+      }
+    }
+
+    console.log(`✅ 批量角色视觉提示词生成完成: ${results.filter(r => r.visualPrompt).length}/${characters.length} 成功`);
+    logScriptProgress(`角色视觉提示词批量生成完成 (${results.filter(r => r.visualPrompt).length}/${characters.length})`);
+    return results;
+  } catch (error: any) {
+    console.error('❌ 批量角色视觉提示词生成失败:', error);
+    logScriptProgress('批量角色提示词生成失败，将回退到逐个生成模式');
+    return characters.map(() => ({ visualPrompt: '', negativePrompt: negativePrompt }));
+  }
+};
+
+// ============================================
+// 单个角色/场景视觉提示词生成
+// ============================================
+
+/**
+ * 生成角色或场景的视觉提示词
+ */
+export const generateVisualPrompts = async (
+  type: 'character' | 'scene',
+  data: Character | Scene,
+  genre: string,
+  model: string = 'gpt-5.1',
+  visualStyle: string = 'live-action',
+  language: string = '中文',
+  artDirection?: ArtDirection
+): Promise<{ visualPrompt: string; negativePrompt: string }> => {
+  const stylePrompt = getStylePrompt(visualStyle);
+  const negativePrompt = type === 'scene'
+    ? getSceneNegativePrompt(visualStyle)
+    : getNegativePrompt(visualStyle);
+
+  // 构建 Art Direction 注入段落
+  const artDirectionBlock = artDirection ? `
+## GLOBAL ART DIRECTION (MANDATORY - MUST follow this for visual consistency)
+${artDirection.consistencyAnchors}
+
+Color Palette: Primary=${artDirection.colorPalette.primary}, Secondary=${artDirection.colorPalette.secondary}, Accent=${artDirection.colorPalette.accent}
+Color Temperature: ${artDirection.colorPalette.temperature}, Saturation: ${artDirection.colorPalette.saturation}
+Lighting: ${artDirection.lightingStyle}
+Texture: ${artDirection.textureStyle}
+Mood Keywords: ${artDirection.moodKeywords.join(', ')}
+` : '';
+
+  let prompt: string;
+
+  if (type === 'character') {
+    const char = data as Character;
+    prompt = `You are an expert AI prompt engineer for ${visualStyle} style image generation.
+${artDirectionBlock}
+Create a detailed visual prompt for a character with the following structure:
+
+Character Data:
+- Name: ${char.name}
+- Gender: ${char.gender}
+- Age: ${char.age}
+- Personality: ${char.personality}
+
+REQUIRED STRUCTURE (output in ${language}):
+1. Core Identity: [ethnicity, age, gender, body type${artDirection ? ` - MUST follow proportions: ${artDirection.characterDesignRules.proportions}` : ''}]
+2. Facial Features: [specific distinguishing features - eyes${artDirection ? ` (MUST follow eye style: ${artDirection.characterDesignRules.eyeStyle})` : ''}, nose, face shape, skin tone${artDirection ? ` (MUST use skin tones from: ${artDirection.colorPalette.skinTones})` : ''}]
+3. Hairstyle: [detailed hair description - color, length, style]
+4. Clothing: [detailed outfit appropriate for ${genre} genre${artDirection ? `, colors MUST harmonize with palette: ${artDirection.colorPalette.primary}, ${artDirection.colorPalette.secondary}` : ''}]
+5. Pose & Expression: [body language and facial expression matching personality]
+6. Technical Quality: ${stylePrompt}
+
+CRITICAL RULES:
+- Sections 1-3 are FIXED features for consistency across all variations${artDirection ? `
+- MUST follow the Global Art Direction above for style consistency
+- Line/edge style: ${artDirection.characterDesignRules.lineWeight}
+- Detail density: ${artDirection.characterDesignRules.detailLevel}` : ''}
+- Use specific, concrete visual details
+- Output as single paragraph, comma-separated
+- MUST include style keywords: ${visualStyle}
+- Length: 60-90 words
+- Focus on visual details that can be rendered in images
+
+Output ONLY the visual prompt text, no explanations.`;
+  } else {
+    const scene = data as Scene;
+    prompt = `You are an expert cinematographer and AI prompt engineer for ${visualStyle} productions.
+${artDirectionBlock}
+Create a cinematic scene/environment prompt with this structure:
+
+Scene Data:
+- Location: ${scene.location}
+- Time: ${scene.time}
+- Atmosphere: ${scene.atmosphere}
+- Genre: ${genre}
+
+REQUIRED STRUCTURE (output in ${language}):
+1. Environment: [detailed location description with architectural/natural elements, props, furniture, vehicles, or objects that tell the story of the space]
+2. Lighting: [specific lighting setup${artDirection ? ` - MUST follow project lighting style: ${artDirection.lightingStyle}` : ' - direction, color temperature, quality (soft/hard), key light source'}]
+3. Composition: [camera angle (eye-level/low/high), framing rules (rule of thirds/symmetry), depth layers]
+4. Atmosphere: [mood, weather, particles in air (fog/dust/rain), environmental effects]
+5. Color Palette: [${artDirection ? `MUST use project palette - Primary: ${artDirection.colorPalette.primary}, Secondary: ${artDirection.colorPalette.secondary}, Accent: ${artDirection.colorPalette.accent}, Temperature: ${artDirection.colorPalette.temperature}` : 'dominant colors, color temperature (warm/cool), saturation level'}]
+6. Technical Quality: ${stylePrompt}
+
+CRITICAL RULES:
+- ⚠️ ABSOLUTELY NO PEOPLE, CHARACTERS, HUMAN FIGURES, OR SILHOUETTES in the scene - this is a PURE ENVIRONMENT/BACKGROUND shot
+- The scene must be an EMPTY environment - no humans, no crowds, no pedestrians, no figures in the distance${artDirection ? `
+- ⚠️ MUST follow the Global Art Direction above - this scene must visually match the same project as all characters
+- Texture/material rendering: ${artDirection.textureStyle}
+- Mood: ${artDirection.moodKeywords.join(', ')}` : ''}
+- Use professional cinematography terminology
+- Specify light sources and direction (e.g., "golden hour backlight from right")
+- Include composition guidelines (rule of thirds, leading lines, depth of field)
+- You may include environmental storytelling elements (e.g., an abandoned coffee cup, footprints in snow, a parked car) to make the scene feel lived-in without showing people
+- Output as single paragraph, comma-separated
+- MUST emphasize ${visualStyle} style throughout
+- Length: 70-110 words
+- Focus on elements that establish mood and cinematic quality
+
+Output ONLY the visual prompt text, no explanations.`;
+  }
+
+  const visualPrompt = await retryOperation(() => chatCompletion(prompt, model, 0.5, 1024));
+
+  return {
+    visualPrompt: visualPrompt.trim(),
+    negativePrompt: negativePrompt
+  };
+};
+
+// ============================================
+// 图像生成
+// ============================================
+
+/**
+ * 生成图像
+ * 使用图像生成API，支持参考图像确保角色和场景一致性
+ */
+export const generateImage = async (
+  prompt: string,
+  referenceImages: string[] = [],
+  aspectRatio: AspectRatio = '16:9',
+  isVariation: boolean = false
+): Promise<string> => {
+  const startTime = Date.now();
+
+  const activeImageModel = getActiveModel('image');
+  const imageModelId = activeImageModel?.apiModel || activeImageModel?.id || 'gemini-3-pro-image-preview';
+  const imageModelEndpoint = activeImageModel?.endpoint || `/v1beta/models/${imageModelId}:generateContent`;
+  const apiKey = checkApiKey('image', activeImageModel?.id);
+  const apiBase = getApiBase('image', activeImageModel?.id);
+
+  try {
+    let finalPrompt = prompt;
+    if (referenceImages.length > 0) {
+      if (isVariation) {
+        finalPrompt = `
+      ⚠️⚠️⚠️ CRITICAL REQUIREMENTS - CHARACTER OUTFIT VARIATION ⚠️⚠️⚠️
+      
+      Reference Images Information:
+      - The provided image shows the CHARACTER's BASE APPEARANCE that you MUST use as reference for FACE ONLY.
+      
+      Task:
+      Generate a character image with a NEW OUTFIT/COSTUME based on this description: "${prompt}".
+      
+      ⚠️ ABSOLUTE REQUIREMENTS (NON-NEGOTIABLE):
+      
+      1. FACE & IDENTITY - MUST BE 100% IDENTICAL TO REFERENCE:
+         • Facial Features: Eyes (color, shape, size), nose structure, mouth shape, facial contours must be EXACTLY the same
+         • Hairstyle & Hair Color: Length, color, texture, and style must be PERFECTLY matched (unless prompt specifies hair change)
+         • Skin tone and facial structure: MUST remain identical
+         • Expression can vary based on prompt
+         
+      2. OUTFIT/CLOTHING - MUST BE COMPLETELY DIFFERENT FROM REFERENCE:
+         • Generate NEW clothing/outfit as described in the prompt
+         • DO NOT copy the clothing from the reference image
+         • The outfit should match the description provided: "${prompt}"
+         • Include all accessories, props, or costume details mentioned in the prompt
+         
+      3. Body proportions should remain consistent with the reference.
+      
+      ⚠️ This is an OUTFIT VARIATION task - The face MUST match the reference, but the CLOTHES MUST be NEW as described!
+      ⚠️ If the new outfit is not clearly visible and different from the reference, the task has FAILED!
+    `;
+      } else {
+        finalPrompt = `
+      ⚠️⚠️⚠️ CRITICAL REQUIREMENTS - CHARACTER CONSISTENCY ⚠️⚠️⚠️
+      
+      Reference Images Information:
+      - The FIRST image is the Scene/Environment reference.
+      - Subsequent images are Character references (Base Look or Variation).
+      - Any remaining images after characters are Prop/Item references (objects that must appear consistently).
+      
+      Task:
+      Generate a cinematic shot matching this prompt: "${prompt}".
+      
+      ⚠️ ABSOLUTE REQUIREMENTS (NON-NEGOTIABLE):
+      1. Scene Consistency:
+         - STRICTLY maintain the visual style, lighting, and environment from the scene reference.
+      
+      2. Character Consistency - HIGHEST PRIORITY:
+         If characters are present in the prompt, they MUST be IDENTICAL to the character reference images:
+         • Facial Features: Eyes (color, shape, size), nose structure, mouth shape, facial contours must be EXACTLY the same
+         • Hairstyle & Hair Color: Length, color, texture, and style must be PERFECTLY matched
+         • Clothing & Outfit: Style, color, material, and accessories must be IDENTICAL
+         • Body Type: Height, build, proportions must remain consistent
+      
+      3. Prop/Item Consistency:
+         If prop reference images are provided, the objects/items in the shot MUST match the reference:
+         • Shape & Form: The prop's shape, size, and proportions must be identical to the reference
+         • Color & Material: Colors, textures, and materials must be consistent
+         • Details: Patterns, text, decorations, and distinguishing features must match exactly
+         
+      ⚠️ DO NOT create variations or interpretations of the character - STRICT REPLICATION ONLY!
+      ⚠️ Character appearance consistency is THE MOST IMPORTANT requirement!
+      ⚠️ Props/items must also maintain visual consistency with their reference images!
+    `;
+      }
+    }
+
+    const parts: any[] = [{ text: finalPrompt }];
+
+    referenceImages.forEach((imgUrl) => {
+      const match = imgUrl.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
+      if (match) {
+        parts.push({
+          inlineData: {
+            mimeType: match[1],
+            data: match[2]
+          }
+        });
+      }
+    });
+
+    const requestBody: any = {
+      contents: [{
+        role: "user",
+        parts: parts
+      }],
+      generationConfig: {
+        responseModalities: ["TEXT", "IMAGE"]
+      }
+    };
+
+    if (aspectRatio !== '16:9') {
+      requestBody.generationConfig.imageConfig = {
+        aspectRatio: aspectRatio
+      };
+    }
+
+    const response = await retryOperation(async () => {
+      const res = await fetch(`${apiBase}${imageModelEndpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'Accept': '*/*'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (!res.ok) {
+        if (res.status === 400) {
+          throw new Error('提示词可能包含不安全或违规内容，未能处理。请修改后重试。');
+        }
+        else if (res.status === 500) {
+          throw new Error('当前请求较多，暂时未能处理成功，请稍后重试。');
+        }
+
+        let errorMessage = `HTTP错误: ${res.status}`;
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.error?.message || errorMessage;
+        } catch (e) {
+          const errorText = await res.text();
+          if (errorText) errorMessage = errorText;
+        }
+        throw new Error(errorMessage);
+      }
+
+      return await res.json();
+    });
+
+    const candidates = response.candidates || [];
+    if (candidates.length > 0 && candidates[0].content && candidates[0].content.parts) {
+      for (const part of candidates[0].content.parts) {
+        if (part.inlineData) {
+          const result = `data:image/png;base64,${part.inlineData.data}`;
+
+          addRenderLogWithTokens({
+            type: 'keyframe',
+            resourceId: 'image-' + Date.now(),
+            resourceName: prompt.substring(0, 50) + '...',
+            status: 'success',
+            model: imageModelId,
+            prompt: prompt,
+            duration: Date.now() - startTime
+          });
+
+          return result;
+        }
+      }
+    }
+
+    throw new Error("图片生成失败 (No image data returned)");
+  } catch (error: any) {
+    addRenderLogWithTokens({
+      type: 'keyframe',
+      resourceId: 'image-' + Date.now(),
+      resourceName: prompt.substring(0, 50) + '...',
+      status: 'failed',
+      model: imageModelId,
+      prompt: prompt,
+      error: error.message,
+      duration: Date.now() - startTime
+    });
+
+    throw error;
+  }
+};

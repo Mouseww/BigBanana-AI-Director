@@ -175,9 +175,9 @@ export const buildKeyframePromptWithAI = async (
     return basicPrompt;
   }
   
-  // 动态导入geminiService以避免循环依赖
+  // 动态导入aiService以避免循环依赖
   try {
-    const { enhanceKeyframePrompt } = await import('../../services/geminiService');
+    const { enhanceKeyframePrompt } = await import('../../services/aiService');
     const enhanced = await enhanceKeyframePrompt(basicPrompt, visualStyle, cameraMovement, frameType);
     return enhanced;
   } catch (error) {

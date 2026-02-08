@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Sparkles, RefreshCw, Loader2, MapPin, Archive, X, Search, Trash2, Package } from 'lucide-react';
 import { ProjectState, CharacterVariation, Character, Scene, Prop, AspectRatio, AssetLibraryItem } from '../../types';
-import { generateImage, generateVisualPrompts } from '../../services/geminiService';
+import { generateImage, generateVisualPrompts } from '../../services/aiService';
 import { 
   getRegionalPrefix, 
   handleImageUpload, 

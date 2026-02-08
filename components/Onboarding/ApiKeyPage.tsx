@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Key, Loader2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
-import { verifyApiKey } from '../../services/geminiService';
+import { verifyApiKey } from '../../services/aiService';
 
 interface ApiKeyPageProps {
   currentApiKey: string;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ProjectState } from '../../types';
-import { parseScriptToData, generateShotList, continueScript, continueScriptStream, rewriteScript, rewriteScriptStream, setScriptLogCallback, clearScriptLogCallback, logScriptProgress } from '../../services/geminiService';
+import { parseScriptToData, generateShotList, continueScript, continueScriptStream, rewriteScript, rewriteScriptStream, setScriptLogCallback, clearScriptLogCallback, logScriptProgress } from '../../services/aiService';
 import { getFinalValue, validateConfig } from './utils';
 import { DEFAULTS } from './constants';
 import ConfigPanel from './ConfigPanel';

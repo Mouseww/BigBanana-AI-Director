@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutGrid, Sparkles, Loader2, AlertCircle, Edit2, Film, Video as VideoIcon } from 'lucide-react';
 import { ProjectState, Shot, Keyframe, AspectRatio, VideoDuration, NineGridPanel, NineGridData } from '../../types';
-import { generateImage, generateVideo, generateActionSuggestion, optimizeKeyframePrompt, optimizeBothKeyframes, enhanceKeyframePrompt, splitShotIntoSubShots, generateNineGridPanels, generateNineGridImage } from '../../services/geminiService';
+import { generateImage, generateVideo, generateActionSuggestion, optimizeKeyframePrompt, optimizeBothKeyframes, enhanceKeyframePrompt, splitShotIntoSubShots, generateNineGridPanels, generateNineGridImage } from '../../services/aiService';
 import { 
   getRefImagesForShot, 
   getPropsInfoForShot,
