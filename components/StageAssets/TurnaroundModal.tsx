@@ -29,7 +29,6 @@ const TurnaroundModal: React.FC<TurnaroundModalProps> = ({
   const [editForm, setEditForm] = useState<{ viewAngle: string; shotSize: string; description: string }>({
     viewAngle: '', shotSize: '', description: ''
   });
-  const [hoveredPanel, setHoveredPanel] = useState<number | null>(null);
 
   // 当编辑面板时，初始化编辑表单
   useEffect(() => {
@@ -365,37 +364,13 @@ const TurnaroundModal: React.FC<TurnaroundModalProps> = ({
           {isCompleted && turnaround?.imageUrl && (
             <div className="p-6 space-y-4">
               {/* 九宫格图片 */}
-              <div className="relative">
+              <div>
                 <img
                   src={turnaround.imageUrl}
                   alt={`${character.name} Turnaround Sheet`}
                   className="w-full rounded-lg border border-[var(--border-primary)] cursor-pointer"
                   onClick={() => onImageClick(turnaround.imageUrl!)}
                 />
-
-                {/* 面板覆盖层 - 悬停显示视角信息 */}
-                <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 rounded-lg overflow-hidden">
-                  {turnaround.panels.map((panel, idx) => (
-                    <div
-                      key={idx}
-                      className={`relative border border-transparent transition-all duration-200 ${
-                        hoveredPanel === idx
-                          ? 'bg-black/30 border-white/30'
-                          : ''
-                      }`}
-                      onMouseEnter={() => setHoveredPanel(idx)}
-                      onMouseLeave={() => setHoveredPanel(null)}
-                    >
-                      {hoveredPanel === idx && (
-                        <div className="absolute inset-0 flex items-center justify-center p-2">
-                          <span className="text-[10px] font-bold text-white bg-black/60 px-2 py-1 rounded">
-                            {panel.viewAngle} / {panel.shotSize}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
               </div>
 
               {/* 视角描述列表 */}
