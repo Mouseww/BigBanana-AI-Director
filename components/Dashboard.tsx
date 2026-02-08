@@ -204,22 +204,29 @@ const Dashboard: React.FC<Props> = ({ onOpenProject, onShowOnboarding, onShowMod
       const assetCount = payload?.stores?.assetLibrary?.length || 0;
       const confirmMessage = `将导入 ${projectCount} 个项目和 ${assetCount} 个资产。若 ID 冲突将覆盖现有数据。是否继续？`;
 
-      if (!window.confirm(confirmMessage)) {
-        return;
-      }
-
-      setIsDataImporting(true);
-      const result = await importIndexedDBData(payload, { mode: 'merge' });
-      await loadProjects();
-      if (showLibraryModal) {
-        await loadLibrary();
-      }
-      showAlert(`导入完成：项目 ${result.projects} 个，资产 ${result.assets} 个。`, { type: 'success' });
+      showAlert(confirmMessage, {
+        type: 'warning',
+        showCancel: true,
+        onConfirm: async () => {
+          try {
+            setIsDataImporting(true);
+            const result = await importIndexedDBData(payload, { mode: 'merge' });
+            await loadProjects();
+            if (showLibraryModal) {
+              await loadLibrary();
+            }
+            showAlert(`导入完成：项目 ${result.projects} 个，资产 ${result.assets} 个。`, { type: 'success' });
+          } catch (error) {
+            console.error('Import failed:', error);
+            showAlert(`导入失败: ${error instanceof Error ? error.message : '未知错误'}`, { type: 'error' });
+          } finally {
+            setIsDataImporting(false);
+          }
+        }
+      });
     } catch (error) {
       console.error('Import failed:', error);
       showAlert(`导入失败: ${error instanceof Error ? error.message : '未知错误'}`, { type: 'error' });
-    } finally {
-      setIsDataImporting(false);
     }
   };
 
