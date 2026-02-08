@@ -54,14 +54,15 @@ export const getRefImagesForShot = (shot: Shot, scriptData: ProjectState['script
 
 /**
  * 获取镜头关联的道具信息（用于提示词注入）
+ * hasImage 标记该道具是否有参考图，用于提示词中区分"参考图一致性"和"文字描述约束"
  */
-export const getPropsInfoForShot = (shot: Shot, scriptData: ProjectState['scriptData']): { name: string; description: string }[] => {
+export const getPropsInfoForShot = (shot: Shot, scriptData: ProjectState['scriptData']): { name: string; description: string; hasImage: boolean }[] => {
   if (!scriptData || !shot.props || !scriptData.props) return [];
   
   return shot.props
     .map(propId => scriptData.props.find(p => String(p.id) === String(propId)))
     .filter((p): p is NonNullable<typeof p> => !!p)
-    .map(p => ({ name: p.name, description: p.description || p.visualPrompt || '' }));
+    .map(p => ({ name: p.name, description: p.description || p.visualPrompt || '', hasImage: !!p.referenceImage }));
 };
 
 /**
@@ -74,7 +75,7 @@ export const buildKeyframePrompt = (
   visualStyle: string,
   cameraMovement: string,
   frameType: 'start' | 'end',
-  propsInfo?: { name: string; description: string }[]
+  propsInfo?: { name: string; description: string; hasImage: boolean }[]
 ): string => {
   const stylePrompt = VISUAL_STYLE_PROMPTS[visualStyle] || visualStyle;
   const cameraGuide = getCameraMovementCompositionGuide(cameraMovement, frameType);
@@ -96,19 +97,36 @@ export const buildKeyframePrompt = (
   // 道具一致性要求（仅在有道具时添加）
   let propConsistencyGuide = '';
   if (propsInfo && propsInfo.length > 0) {
-    const propsList = propsInfo.map(p => `- ${p.name}: ${p.description}`).join('\n');
-    propConsistencyGuide = `
+    const propsWithImage = propsInfo.filter(p => p.hasImage);
+    const propsWithoutImage = propsInfo.filter(p => !p.hasImage);
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【道具一致性要求】PROP CONSISTENCY REQUIREMENTS
-⚠️ 如果提供了道具参考图,画面中出现的物品必须严格遵循参考图:
+    let sections: string[] = [];
+
+    // 有参考图的道具：要求严格遵循参考图
+    if (propsWithImage.length > 0) {
+      const list = propsWithImage.map(p => `- ${p.name}: ${p.description}`).join('\n');
+      sections.push(`⚠️ 以下道具已提供参考图,画面中出现时必须严格遵循参考图:
 • 外形特征: 道具的形状、大小、比例必须与参考图一致
 • 颜色材质: 颜色、材质、纹理必须保持一致
 • 细节元素: 图案、文字、装饰细节必须与参考图匹配
 ⚠️ 这是高优先级要求!
 
-当前镜头涉及的道具:
-${propsList}`;
+有参考图的道具:
+${list}`);
+    }
+
+    // 无参考图的道具：仅文字描述约束
+    if (propsWithoutImage.length > 0) {
+      const list = propsWithoutImage.map(p => `- ${p.name}: ${p.description}`).join('\n');
+      sections.push(`以下道具无参考图,请根据文字描述准确呈现:
+${list}`);
+    }
+
+    propConsistencyGuide = `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【道具一致性要求】PROP CONSISTENCY REQUIREMENTS
+${sections.join('\n\n')}`;
   }
 
   return `${basePrompt}
@@ -147,7 +165,7 @@ export const buildKeyframePromptWithAI = async (
   cameraMovement: string,
   frameType: 'start' | 'end',
   enhanceWithAI: boolean = true,
-  propsInfo?: { name: string; description: string }[]
+  propsInfo?: { name: string; description: string; hasImage: boolean }[]
 ): Promise<string> => {
   // 先构建基础提示词
   const basicPrompt = buildKeyframePrompt(basePrompt, visualStyle, cameraMovement, frameType, propsInfo);
@@ -409,7 +427,7 @@ export const buildPromptFromNineGridPanel = (
   actionSummary: string,
   visualStyle: string,
   cameraMovement: string,
-  propsInfo?: { name: string; description: string }[]
+  propsInfo?: { name: string; description: string; hasImage: boolean }[]
 ): string => {
   const stylePrompt = VISUAL_STYLE_PROMPTS[visualStyle] || visualStyle;
   
@@ -425,18 +443,34 @@ export const buildPromptFromNineGridPanel = (
   // 道具一致性要求（仅在有道具时添加）
   let propConsistencyGuide = '';
   if (propsInfo && propsInfo.length > 0) {
-    const propsList = propsInfo.map(p => `- ${p.name}: ${p.description}`).join('\n');
+    const propsWithImage = propsInfo.filter(p => p.hasImage);
+    const propsWithoutImage = propsInfo.filter(p => !p.hasImage);
+
+    let sections: string[] = [];
+
+    if (propsWithImage.length > 0) {
+      const list = propsWithImage.map(p => `- ${p.name}: ${p.description}`).join('\n');
+      sections.push(`⚠️ 以下道具已提供参考图,画面中出现时必须严格遵循参考图:
+• 外形特征: 道具的形状、大小、比例必须与参考图一致
+• 颜色材质: 颜色、材质、纹理必须保持一致
+• 细节元素: 图案、文字、装饰细节必须与参考图匹配
+⚠️ 这是高优先级要求!
+
+有参考图的道具:
+${list}`);
+    }
+
+    if (propsWithoutImage.length > 0) {
+      const list = propsWithoutImage.map(p => `- ${p.name}: ${p.description}`).join('\n');
+      sections.push(`以下道具无参考图,请根据文字描述准确呈现:
+${list}`);
+    }
+
     propConsistencyGuide = `
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 【道具一致性要求】PROP CONSISTENCY REQUIREMENTS
-⚠️ 如果提供了道具参考图,画面中出现的物品必须严格遵循参考图:
-• 外形特征: 道具的形状、大小、比例必须与参考图一致
-• 颜色材质: 颜色、材质、纹理必须保持一致
-• 细节元素: 图案、文字、装饰细节必须与参考图匹配
-
-当前镜头涉及的道具:
-${propsList}`;
+${sections.join('\n\n')}`;
   }
 
   return `${panel.description}
