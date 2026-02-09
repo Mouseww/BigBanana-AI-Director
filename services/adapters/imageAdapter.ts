@@ -8,6 +8,122 @@ import { getApiKeyForModel, getApiBaseUrlForModel, getActiveImageModel } from '.
 import { ApiKeyError } from './chatAdapter';
 
 /**
+ * 从Markdown文本中提取首个图片URL
+ */
+const extractMarkdownImageUrl = (text: string): string | null => {
+  const match = text.match(/!\[[^\]]*\]\((https?:\/\/[^\s)]+)\)/);
+  return match ? match[1] : null;
+};
+
+/**
+ * 下载图片URL并转为Base64 Data URL
+ */
+const fetchImageBlob = async (url: string): Promise<Blob> => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`图片下载失败: HTTP ${response.status}`);
+    }
+    return await response.blob();
+  } catch (error) {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      const proxyUrl = `${window.location.origin}/image-proxy?url=${encodeURIComponent(url)}`;
+      const proxyResponse = await fetch(proxyUrl);
+      if (!proxyResponse.ok) {
+        throw error;
+      }
+      return await proxyResponse.blob();
+    }
+    throw error;
+  }
+};
+
+const convertImageUrlToBase64 = async (url: string): Promise<string> => {
+  const blob = await fetchImageBlob(url);
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('图片转Base64失败'));
+    reader.readAsDataURL(blob);
+  });
+};
+
+/**
+ * 解析SSE流式图片响应（等待STOP后判定）
+ */
+const parseSseImageResponse = async (response: Response): Promise<string> => {
+  if (!response.body) {
+    throw new Error('图片生成失败：响应体为空');
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let collectedText = '';
+  let inlineDataUrl: string | null = null;
+  let stopReceived = false;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const chunks = buffer.split('\n\n');
+    buffer = chunks.pop() || '';
+
+    for (const chunk of chunks) {
+      const lines = chunk.split(/\r?\n/);
+      const dataLines = lines.filter(line => line.startsWith('data:'));
+      if (dataLines.length === 0) continue;
+
+      const data = dataLines.map(line => line.replace(/^data:\s?/, '')).join('\n').trim();
+      if (!data) continue;
+      if (data === '[DONE]') {
+        stopReceived = true;
+        continue;
+      }
+
+      try {
+        const payload = JSON.parse(data);
+        const candidates = payload.candidates || [];
+        for (const candidate of candidates) {
+          if (candidate.finishReason === 'STOP') {
+            stopReceived = true;
+          }
+
+          const parts = candidate.content?.parts || [];
+          for (const part of parts) {
+            if (part.inlineData?.data && !inlineDataUrl) {
+              inlineDataUrl = `data:image/png;base64,${part.inlineData.data}`;
+            }
+            if (typeof part.text === 'string') {
+              collectedText += part.text;
+            }
+          }
+        }
+      } catch {
+        // 忽略非JSON数据块
+      }
+    }
+  }
+
+  if (inlineDataUrl) {
+    return inlineDataUrl;
+  }
+
+  if (!stopReceived) {
+    // 未收到STOP但流已结束，按最终内容判定
+  }
+
+  const imageUrl = extractMarkdownImageUrl(collectedText);
+  if (imageUrl) {
+    return convertImageUrlToBase64(imageUrl);
+  }
+
+  throw new Error('图片生成失败：未能从SSE响应中提取图片数据');
+};
+
+/**
  * 重试操作
  */
 const retryOperation = async <T>(
@@ -161,16 +277,37 @@ export const callImageApi = async (
       throw new Error(errorMessage);
     }
 
-    return await res.json();
+    return res;
   });
 
-  // 提取 base64 图片
-  const candidates = response.candidates || [];
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('text/event-stream')) {
+    return parseSseImageResponse(response);
+  }
+
+  let responseData: any;
+  try {
+    responseData = await response.json();
+  } catch (error) {
+    throw new Error('图片生成失败：响应不是有效的JSON');
+  }
+
+  // 提取 base64 图片（inlineData 优先）
+  const candidates = responseData.candidates || [];
   if (candidates.length > 0 && candidates[0].content && candidates[0].content.parts) {
+    let collectedText = '';
     for (const part of candidates[0].content.parts) {
       if (part.inlineData) {
         return `data:image/png;base64,${part.inlineData.data}`;
       }
+      if (typeof part.text === 'string') {
+        collectedText += part.text;
+      }
+    }
+
+    const imageUrl = extractMarkdownImageUrl(collectedText);
+    if (imageUrl) {
+      return convertImageUrlToBase64(imageUrl);
     }
   }
 

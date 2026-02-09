@@ -152,6 +152,7 @@ export interface ModelRegistryState {
   models: ModelDefinition[];
   activeModels: ActiveModels;
   globalApiKey?: string;
+  globalApiBaseUrl?: string;
 }
 
 // ============================================
@@ -335,7 +336,7 @@ export const BUILTIN_PROVIDERS: ModelProvider[] = [
   {
     id: 'antsk',
     name: 'BigBanana API (api.antsk.cn)',
-    baseUrl: 'https://api.antsk.cn',
+    baseUrl: (process.env.ANTSK_API_BASE_URL || 'https://api.antsk.cn'),
     isBuiltIn: true,
     isDefault: true,
   },

@@ -17,11 +17,14 @@ import {
 // localStorage 键名
 const STORAGE_KEY = 'bigbanana_model_config';
 
-// 默认提供商 - api.antsk.cn
+// 默认提供商 - 支持从 .env 配置 ANTSK_API_BASE_URL
+const DEFAULT_ANTSK_BASE_URL = (process.env.ANTSK_API_BASE_URL || 'https://api.antsk.cn');
+
+// 默认提供商
 const DEFAULT_PROVIDER: ModelProvider = {
   id: 'antsk',
   name: 'BigBanana API (api.antsk.cn)',
-  baseUrl: 'https://api.antsk.cn',
+  baseUrl: DEFAULT_ANTSK_BASE_URL,
   isDefault: true,
   isBuiltIn: true
 };
@@ -73,6 +76,11 @@ export const loadModelConfig = (): ModelManagerState => {
       const hasDefaultProvider = parsed.providers.some(p => p.id === 'antsk');
       if (!hasDefaultProvider) {
         parsed.providers.unshift(DEFAULT_PROVIDER);
+      } else if (process.env.ANTSK_API_BASE_URL) {
+        // 全局配置覆盖默认提供商 baseUrl
+        parsed.providers = parsed.providers.map(p =>
+          p.id === 'antsk' ? { ...p, baseUrl: DEFAULT_ANTSK_BASE_URL } : p
+        );
       }
       // 迁移旧的 Veo 模型名为统一的 veo
       const videoModelName = parsed.currentConfig?.videoModel?.modelName || '';

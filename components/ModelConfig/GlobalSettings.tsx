@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Key, Loader2, CheckCircle, AlertCircle, ExternalLink, Gift, Sparkles } from 'lucide-react';
-import { getGlobalApiKey, setGlobalApiKey } from '../../services/modelRegistry';
+import { getGlobalApiKey, setGlobalApiKey, getGlobalApiBaseUrl, setGlobalApiBaseUrl } from '../../services/modelRegistry';
 import { verifyApiKey } from '../../services/modelService';
 
 interface GlobalSettingsProps {
@@ -14,6 +14,7 @@ interface GlobalSettingsProps {
 
 const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
   const [apiKey, setApiKey] = useState('');
+  const [baseUrl, setBaseUrl] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [verifyMessage, setVerifyMessage] = useState('');
@@ -21,6 +22,8 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
   useEffect(() => {
     const currentKey = getGlobalApiKey() || '';
     setApiKey(currentKey);
+    const currentBaseUrl = getGlobalApiBaseUrl() || '';
+    setBaseUrl(currentBaseUrl);
     if (currentKey) {
       setVerifyStatus('success');
       setVerifyMessage('API Key 已配置');
@@ -40,7 +43,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
 
     try {
       const result = await verifyApiKey(apiKey.trim());
-      
+
       if (result.success) {
         setVerifyStatus('success');
         setVerifyMessage('验证成功！API Key 已保存');
@@ -63,6 +66,17 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
     setVerifyStatus('idle');
     setVerifyMessage('');
     setGlobalApiKey('');
+    onRefresh();
+  };
+
+  const handleSaveBaseUrl = () => {
+    setGlobalApiBaseUrl(baseUrl.trim());
+    onRefresh();
+  };
+
+  const handleClearBaseUrl = () => {
+    setBaseUrl('');
+    setGlobalApiBaseUrl('');
     onRefresh();
   };
 
@@ -177,11 +191,54 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
         </div>
       </div>
 
+      {/* Base URL 配置 */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Key className="w-4 h-4 text-indigo-400" />
+          <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+            全局 Base URL
+          </label>
+        </div>
+
+        <div className="space-y-3">
+          <input
+            type="text"
+            value={baseUrl}
+            onChange={(e) => setBaseUrl(e.target.value)}
+            placeholder="例如：https://api.antsk.cn"
+            className="w-full bg-[#141414] border border-zinc-800 text-white px-4 py-3 text-sm rounded-lg focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-900 transition-all font-mono placeholder:text-zinc-700"
+          />
+
+          <p className="text-[10px] text-zinc-600 leading-relaxed">
+            用于覆盖所有模型请求的 API Base URL。留空则使用默认提供商地址。
+          </p>
+
+          <div className="flex gap-3">
+            {getGlobalApiBaseUrl() && (
+              <button
+                onClick={handleClearBaseUrl}
+                className="flex-1 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors rounded-lg border border-zinc-800"
+              >
+                清除 Base URL
+              </button>
+            )}
+            <button
+              onClick={handleSaveBaseUrl}
+              disabled={!baseUrl.trim()}
+              className="flex-1 py-3 bg-indigo-600 text-white font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              保存 Base URL
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* 提示 */}
       <div className="p-4 bg-[var(--bg-elevated)]/50 rounded-lg border border-[var(--border-primary)]">
         <h4 className="text-xs font-bold text-[var(--text-tertiary)] mb-2">配置说明</h4>
         <ul className="text-[10px] text-[var(--text-muted)] space-y-1 list-disc list-inside">
           <li>全局 API Key 用于所有BigBanana API 内置模型的调用</li>
+          <li>全局 Base URL 会覆盖所有模型请求的 API 地址</li>
           <li>你可以在各模型类别中调整模型参数（温度、Token 等）</li>
           <li>支持添加自定义模型，使用其他 API 服务</li>
           <li>所有配置仅保存在本地浏览器，不会上传到服务器</li>
