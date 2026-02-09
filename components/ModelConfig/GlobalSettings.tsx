@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Key, CheckCircle, AlertCircle, ExternalLink, Gift, Sparkles } from 'lucide-react';
+import { Key, Loader2, CheckCircle, AlertCircle, ExternalLink, Gift, Sparkles } from 'lucide-react';
 import { getGlobalApiKey, setGlobalApiKey, getGlobalApiBaseUrl, setGlobalApiBaseUrl } from '../../services/modelRegistry';
+import { verifyApiKey } from '../../services/modelService';
 
 interface GlobalSettingsProps {
   onRefresh: () => void;
@@ -14,6 +15,7 @@ interface GlobalSettingsProps {
 const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
   const [apiKey, setApiKey] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [verifyMessage, setVerifyMessage] = useState('');
 
@@ -28,12 +30,35 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
     }
   }, []);
 
-  const handleSaveKey = () => {
-    const trimmedKey = apiKey.trim();
-    setGlobalApiKey(trimmedKey);
-    setVerifyStatus('success');
-    setVerifyMessage(trimmedKey ? 'API Key 已保存' : 'API Key 已清除');
-    onRefresh();
+  const handleVerifyAndSave = async () => {
+    if (!apiKey.trim()) {
+      setVerifyStatus('error');
+      setVerifyMessage('请输入 API Key');
+      return;
+    }
+
+    setIsVerifying(true);
+    setVerifyStatus('idle');
+    setVerifyMessage('');
+
+    try {
+      const result = await verifyApiKey(apiKey.trim());
+
+      if (result.success) {
+        setVerifyStatus('success');
+        setVerifyMessage('验证成功！API Key 已保存');
+        setGlobalApiKey(apiKey.trim());
+        onRefresh();
+      } else {
+        setVerifyStatus('error');
+        setVerifyMessage(result.message);
+      }
+    } catch (error: any) {
+      setVerifyStatus('error');
+      setVerifyMessage(error.message || '验证过程出错');
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const handleClearKey = () => {
@@ -58,17 +83,17 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
   return (
     <div className="space-y-6">
       {/* 折扣广告卡片 */}
-      <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-indigo-500/30 rounded-xl p-5">
+      <div className="bg-[var(--accent-bg)] border border-[var(--accent-border)] rounded-xl p-5">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center flex-shrink-0">
-            <Gift className="w-6 h-6 text-white" />
+          <div className="w-12 h-12 rounded-xl bg-[var(--accent)] flex items-center justify-center flex-shrink-0">
+            <Gift className="w-6 h-6 text-[var(--text-primary)]" />
           </div>
           <div className="flex-1">
-            <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-yellow-400" />
+            <h3 className="text-base font-bold text-[var(--text-primary)] mb-1 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[var(--warning-text)]" />
               推荐使用 BigBanana API
             </h3>
-            <p className="text-xs text-zinc-400 mb-3 leading-relaxed">
+            <p className="text-xs text-[var(--text-tertiary)] mb-3 leading-relaxed">
               支持 GPT-5.1、GPT-5.2、Claude Sonnet 4.5、Gemini-3、Veo 3.1、Sora-2 等多种模型。
               稳定快速，价格优惠。本开源项目由 BigBanana API 提供支持。
             </p>
@@ -77,7 +102,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
                 href="https://api.antsk.cn" 
                 target="_blank" 
                 rel="noreferrer"
-                className="px-4 py-2 bg-white text-black text-xs font-bold rounded-lg hover:bg-zinc-200 transition-colors inline-flex items-center gap-1.5"
+                className="px-4 py-2 bg-[var(--btn-primary-bg)] text-[var(--btn-primary-text)] text-xs font-bold rounded-lg hover:bg-[var(--btn-primary-hover)] transition-colors inline-flex items-center gap-1.5"
               >
                 立即购买
                 <ExternalLink className="w-3 h-3" />
@@ -86,7 +111,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
                 href="https://ocnf8yod3ljg.feishu.cn/wiki/MgFVw2EoQieTLKktaf2cHvu6nY3" 
                 target="_blank" 
                 rel="noreferrer"
-                className="px-4 py-2 bg-zinc-800 text-zinc-300 text-xs font-bold rounded-lg hover:bg-zinc-700 transition-colors inline-flex items-center gap-1.5"
+                className="px-4 py-2 bg-[var(--bg-hover)] text-[var(--text-secondary)] text-xs font-bold rounded-lg hover:bg-[var(--border-secondary)] transition-colors inline-flex items-center gap-1.5"
               >
                 使用教程
                 <ExternalLink className="w-3 h-3" />
@@ -99,8 +124,8 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
       {/* API Key 配置 */}
       <div>
         <div className="flex items-center gap-2 mb-3">
-          <Key className="w-4 h-4 text-indigo-400" />
-          <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+          <Key className="w-4 h-4 text-[var(--accent-text)]" />
+          <label className="text-[10px] font-bold text-[var(--text-tertiary)] uppercase tracking-widest">
             全局 API Key
           </label>
         </div>
@@ -115,13 +140,14 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
               setVerifyMessage('');
             }}
             placeholder="输入你的 API Key..."
-            className="w-full bg-[#141414] border border-zinc-800 text-white px-4 py-3 text-sm rounded-lg focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-900 transition-all font-mono placeholder:text-zinc-700"
+            className="w-full bg-[var(--bg-surface)] border border-[var(--border-primary)] text-[var(--text-primary)] px-4 py-3 text-sm rounded-lg focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-hover)] transition-all font-mono placeholder:text-[var(--text-muted)]"
+            disabled={isVerifying}
           />
           
           {/* 状态提示 */}
           {verifyMessage && (
             <div className={`flex items-center gap-2 text-xs ${
-              verifyStatus === 'success' ? 'text-green-400' : 'text-red-400'
+              verifyStatus === 'success' ? 'text-[var(--success-text)]' : 'text-[var(--error-text)]'
             }`}>
               {verifyStatus === 'success' ? (
                 <CheckCircle className="w-3.5 h-3.5" />
@@ -133,7 +159,7 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
           )}
 
           {/* 说明文字 */}
-          <p className="text-[10px] text-zinc-600 leading-relaxed">
+          <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
             全局 API Key 用于所有模型调用。你也可以为单个提供商配置独立的 API Key。
           </p>
 
@@ -142,16 +168,24 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
             {getGlobalApiKey() && (
               <button
                 onClick={handleClearKey}
-                className="flex-1 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs font-bold uppercase tracking-wider transition-colors rounded-lg border border-zinc-800"
+                className="flex-1 py-3 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] text-xs font-bold uppercase tracking-wider transition-colors rounded-lg border border-[var(--border-primary)]"
               >
                 清除 Key
               </button>
             )}
             <button
-              onClick={handleSaveKey}
-              className="flex-1 py-3 bg-indigo-600 text-white font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              onClick={handleVerifyAndSave}
+              disabled={isVerifying || !apiKey.trim()}
+              className="flex-1 py-3 bg-[var(--accent)] text-[var(--text-primary)] font-bold text-xs uppercase tracking-wider rounded-lg hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              保存
+              {isVerifying ? (
+                <>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  验证中...
+                </>
+              ) : (
+                '验证并保存'
+              )}
             </button>
           </div>
         </div>
@@ -200,9 +234,9 @@ const GlobalSettings: React.FC<GlobalSettingsProps> = ({ onRefresh }) => {
       </div>
 
       {/* 提示 */}
-      <div className="p-4 bg-zinc-900/50 rounded-lg border border-zinc-800">
-        <h4 className="text-xs font-bold text-zinc-400 mb-2">配置说明</h4>
-        <ul className="text-[10px] text-zinc-600 space-y-1 list-disc list-inside">
+      <div className="p-4 bg-[var(--bg-elevated)]/50 rounded-lg border border-[var(--border-primary)]">
+        <h4 className="text-xs font-bold text-[var(--text-tertiary)] mb-2">配置说明</h4>
+        <ul className="text-[10px] text-[var(--text-muted)] space-y-1 list-disc list-inside">
           <li>全局 API Key 用于所有BigBanana API 内置模型的调用</li>
           <li>全局 Base URL 会覆盖所有模型请求的 API 地址</li>
           <li>你可以在各模型类别中调整模型参数（温度、Token 等）</li>

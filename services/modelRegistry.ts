@@ -24,6 +24,9 @@ const STORAGE_KEY = 'bigbanana_model_registry';
 const API_KEY_STORAGE_KEY = 'antsk_api_key';
 const API_BASE_URL_STORAGE_KEY = 'antsk_api_base_url';
 
+// 规范化 URL（去尾部斜杠、转小写）用于去重
+const normalizeBaseUrl = (url: string): string => url.trim().replace(/\/+$/, '').toLowerCase();
+
 // 运行时状态缓存
 let registryState: ModelRegistryState | null = null;
 
@@ -56,6 +59,9 @@ export const loadRegistry = (): ModelRegistryState => {
       const parsed = JSON.parse(stored) as ModelRegistryState;
       const deprecatedVideoModelIds = [
         'veo-3.1',
+        'veo-r2v',
+        'veo_3_0_r2v_fast_portrait',
+        'veo_3_0_r2v_fast_landscape',
         'veo_3_1_t2v_fast_landscape',
         'veo_3_1_t2v_fast_portrait',
         'veo_3_1_i2v_s_fast_fl_landscape',
@@ -78,6 +84,15 @@ export const loadRegistry = (): ModelRegistryState => {
           );
         }
       });
+
+      // 按 baseUrl 去重提供商（保留先出现的项，通常为内置）
+      const seenBaseUrls = new Set<string>();
+      parsed.providers = parsed.providers.filter(p => {
+        const key = normalizeBaseUrl(p.baseUrl);
+        if (seenBaseUrls.has(key)) return false;
+        seenBaseUrls.add(key);
+        return true;
+      });
       
       // 合并内置模型，并确保内置模型的参数与代码保持同步
       const existingModelIds = parsed.models.map(m => m.id);
@@ -87,26 +102,52 @@ export const loadRegistry = (): ModelRegistryState => {
           // 内置模型不存在，添加
           parsed.models.push(bm);
         } else {
-          // 内置模型已存在，更新 params 以确保与代码同步（保留用户的 isEnabled 设置）
+          // 内置模型已存在：以代码定义为基础，保留用户的个性化设置
           const existing = parsed.models[existingIndex];
+          // 用户可调整的偏好参数（defaultAspectRatio, temperature, maxTokens, defaultDuration 等）
+          // 结构性参数（supportedAspectRatios, supportedDurations, mode 等）始终从代码同步
+          const USER_PREF_KEYS = ['defaultAspectRatio', 'temperature', 'maxTokens', 'defaultDuration'];
+          const mergedParams = { ...(bm as any).params };
+          const existingParams = (existing as any).params;
+          if (existingParams) {
+            for (const key of USER_PREF_KEYS) {
+              if (key in existingParams && existingParams[key] !== undefined) {
+                mergedParams[key] = existingParams[key];
+              }
+            }
+          }
           parsed.models[existingIndex] = {
             ...bm,
-            isEnabled: existing.isEnabled, // 保留用户的启用/禁用设置
+            isEnabled: existing.isEnabled,
+            params: mergedParams as any,
           };
         }
       });
 
-      // 清理旧的 Veo 内置模型
+      // 迁移缺失的 apiModel（优先从 id 或 providerId 前缀推断）
+      parsed.models = parsed.models.map(m => {
+        if (m.apiModel) return m;
+        if (m.providerId && m.id.startsWith(`${m.providerId}:`)) {
+          return { ...m, apiModel: m.id.slice(m.providerId.length + 1) };
+        }
+        return { ...m, apiModel: m.id };
+      });
+
+      // 清理旧的已废弃视频模型
+      const modelCountBefore = parsed.models.length;
       parsed.models = parsed.models.filter(
         m => !(m.type === 'video' && deprecatedVideoModelIds.includes(m.id))
       );
+      const modelsRemoved = modelCountBefore - parsed.models.length;
 
       // 迁移激活视频模型
+      let activeModelMigrated = false;
       if (
         deprecatedVideoModelIds.includes(parsed.activeModels.video) ||
         parsed.activeModels.video?.startsWith('veo_3_1')
       ) {
         parsed.activeModels.video = 'veo';
+        activeModelMigrated = true;
       }
       
       // 同步全局 API Key / Base URL
@@ -114,6 +155,17 @@ export const loadRegistry = (): ModelRegistryState => {
       parsed.globalApiBaseUrl = localStorage.getItem(API_BASE_URL_STORAGE_KEY) || parsed.globalApiBaseUrl;
       
       registryState = parsed;
+
+      // 如果发生了迁移，立即回写 localStorage，避免每次加载都重复执行
+      if (modelsRemoved > 0 || activeModelMigrated) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+          console.log(`🔄 模型注册中心迁移完成：清理 ${modelsRemoved} 个废弃模型`);
+        } catch (e) {
+          // 回写失败不影响运行，下次加载仍会重新迁移
+        }
+      }
+
       return parsed;
     }
   } catch (e) {
@@ -182,6 +234,9 @@ export const getDefaultProvider = (): ModelProvider => {
  */
 export const addProvider = (provider: Omit<ModelProvider, 'id' | 'isBuiltIn'>): ModelProvider => {
   const state = loadRegistry();
+  const normalized = normalizeBaseUrl(provider.baseUrl);
+  const existing = state.providers.find(p => normalizeBaseUrl(p.baseUrl) === normalized);
+  if (existing) return existing;
   const newProvider: ModelProvider = {
     ...provider,
     id: `provider_${Date.now()}`,
@@ -323,17 +378,27 @@ export const setActiveModel = (type: ModelType, modelId: string): boolean => {
 export const registerModel = (model: Omit<ModelDefinition, 'isBuiltIn'> & { id?: string }): ModelDefinition => {
   const state = loadRegistry();
   
-  // 使用用户提供的 ID，如果没有则自动生成
-  const modelId = (model as any).id?.trim() || `model_${Date.now()}`;
-  
-  // 检查 ID 是否已存在
-  if (state.models.some(m => m.id === modelId)) {
+  const providedId = (model as any).id?.trim();
+  const apiModel = (model as any).apiModel?.trim();
+  const baseId = providedId || (apiModel ? `${model.providerId}:${apiModel}` : `model_${Date.now()}`);
+  let modelId = baseId;
+
+  // 若未显式提供 ID，则自动生成唯一 ID（允许 API 模型名重复）
+  if (!providedId) {
+    let suffix = 1;
+    while (state.models.some(m => m.id === modelId)) {
+      modelId = `${baseId}_${suffix++}`;
+    }
+  } else if (state.models.some(m => m.id === modelId)) {
     throw new Error(`模型 ID "${modelId}" 已存在，请使用其他 ID`);
   }
   
   const newModel = {
     ...model,
     id: modelId,
+    apiModel: apiModel || (model.providerId && modelId.startsWith(`${model.providerId}:`)
+      ? modelId.slice(model.providerId.length + 1)
+      : modelId),
     isBuiltIn: false,
   } as ModelDefinition;
   
@@ -503,7 +568,7 @@ export const isModelAvailable = (modelId: string): boolean => {
 // ============================================
 
 /**
- * 获取默认横竖屏比例
+ * 获取默认横竖屏比例（模型默认值）
  */
 export const getDefaultAspectRatio = (): AspectRatio => {
   const imageModel = getActiveImageModel();
@@ -511,6 +576,27 @@ export const getDefaultAspectRatio = (): AspectRatio => {
     return imageModel.params.defaultAspectRatio;
   }
   return '16:9';
+};
+
+/**
+ * 获取用户选择的横竖屏比例
+ * 读取当前激活图片模型的 defaultAspectRatio
+ */
+export const getUserAspectRatio = (): AspectRatio => {
+  return getDefaultAspectRatio();
+};
+
+/**
+ * 设置用户选择的横竖屏比例（同步更新当前激活图片模型的默认比例）
+ * 修改会持久化保存，并与模型配置页面的"默认比例"保持一致
+ */
+export const setUserAspectRatio = (ratio: AspectRatio): void => {
+  const activeModel = getActiveImageModel();
+  if (activeModel) {
+    updateModel(activeModel.id, {
+      params: { ...activeModel.params, defaultAspectRatio: ratio }
+    } as any);
+  }
 };
 
 /**

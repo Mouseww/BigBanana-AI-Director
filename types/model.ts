@@ -36,7 +36,7 @@ export type VideoMode = 'sync' | 'async';
  */
 export interface ChatModelParams {
   temperature: number;           // 温度 0-2，默认 0.7
-  maxTokens: number;             // 最大 token，默认 8192
+  maxTokens?: number;            // 最大 token，留空表示不限制
   topP?: number;                 // Top P，可选
   frequencyPenalty?: number;     // 频率惩罚，可选
   presencePenalty?: number;      // 存在惩罚，可选
@@ -75,6 +75,7 @@ export type ModelParams = ChatModelParams | ImageModelParams | VideoModelParams;
  */
 export interface ModelDefinitionBase {
   id: string;                    // 唯一标识，如 'gpt-5.1'
+  apiModel?: string;             // API 实际模型名（可与其他模型重复）
   name: string;                  // 显示名称，如 'GPT-5.1'
   type: ModelType;               // 模型类型
   providerId: string;            // 提供商 ID
@@ -199,7 +200,7 @@ export interface VideoGenerateOptions {
  */
 export const DEFAULT_CHAT_PARAMS: ChatModelParams = {
   temperature: 0.7,
-  maxTokens: 8192,
+  maxTokens: undefined,
 };
 
 /**
@@ -212,7 +213,7 @@ export const DEFAULT_IMAGE_PARAMS: ImageModelParams = {
 };
 
 /**
- * 默认视频模型参数 (Veo)
+ * 默认视频模型参数 (Veo 首尾帧模式)
  */
 export const DEFAULT_VIDEO_PARAMS_VEO: VideoModelParams = {
   mode: 'sync',
@@ -289,11 +290,11 @@ export const BUILTIN_CHAT_MODELS: ChatModelDefinition[] = [
 export const BUILTIN_IMAGE_MODELS: ImageModelDefinition[] = [
   {
     id: 'gemini-3-pro-image-preview',
-    name: 'Gemini 3 Pro Image',
+    name: 'Gemini 3 Pro Image(Nano Banana Pro)',
     type: 'image',
     providerId: 'antsk',
     endpoint: '/v1beta/models/gemini-3-pro-image-preview:generateContent',
-    description: 'Google Gemini 图片生成模型',
+    description: 'Google Nano Banana Pro 图片生成模型',
     isBuiltIn: true,
     isEnabled: true,
     params: { ...DEFAULT_IMAGE_PARAMS },
@@ -306,11 +307,11 @@ export const BUILTIN_IMAGE_MODELS: ImageModelDefinition[] = [
 export const BUILTIN_VIDEO_MODELS: VideoModelDefinition[] = [
   {
     id: 'veo',
-    name: 'Veo 3.1 (Auto)',
+    name: 'Veo 3.1 首尾帧',
     type: 'video',
     providerId: 'antsk',
     endpoint: '/v1/chat/completions',
-    description: 'Google Veo 视频生成（自动按横竖屏与是否带图选择模型），同步模式',
+    description: 'Veo 3.1 首尾帧模式（自动按横竖屏选择模型），需要起始帧和结束帧',
     isBuiltIn: true,
     isEnabled: true,
     params: { ...DEFAULT_VIDEO_PARAMS_VEO },
